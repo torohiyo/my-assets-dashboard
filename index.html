@@ -3,359 +3,253 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Assets — 資産管理ダッシュボード</title>
+  <title>My Assets — 家計資産管理</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <style>
     :root {
-      --bg: #F7F8FC;
-      --surface: #FFFFFF;
-      --primary: #5B7FD4;
-      --primary-light: #EBF0FB;
-      --positive: #48BB78;
-      --positive-light: #F0FFF4;
-      --negative: #FC8181;
-      --negative-light: #FFF5F5;
-      --warning: #ED8936;
-      --warning-light: #FFFAF0;
-      --text: #2D3748;
-      --text-muted: #718096;
-      --text-light: #A0AEC0;
-      --border: #E2E8F0;
-      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-      --radius: 16px;
-      --radius-sm: 10px;
-      --sidebar-width: 224px;
+      --bg:#F7F8FC; --surface:#fff; --primary:#5B7FD4; --primary-light:#EBF0FB;
+      --pos:#48BB78; --pos-light:#F0FFF4; --neg:#FC8181; --neg-light:#FFF5F5;
+      --warn:#ED8936; --warn-light:#FFFAF0; --text:#2D3748; --muted:#718096;
+      --light:#A0AEC0; --border:#E2E8F0; --shadow:0 1px 3px rgba(0,0,0,.08);
+      --shadow-md:0 4px 12px rgba(0,0,0,.08); --r:16px; --rs:10px; --sw:224px;
     }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Noto Sans JP',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 
-    * { margin:0; padding:0; box-sizing:border-box; }
+    /* ── Sidebar ── */
+    .sidebar{width:var(--sw);background:var(--surface);border-right:1px solid var(--border);position:fixed;top:0;left:0;height:100vh;z-index:100;display:flex;flex-direction:column;padding:20px 14px;overflow-y:auto}
+    .logo{display:flex;align-items:center;gap:10px;margin-bottom:24px;padding:0 6px}
+    .logo-icon{width:34px;height:34px;background:var(--primary);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700;flex-shrink:0}
+    .logo-text{font-size:15px;font-weight:700}.logo-sub{font-size:10px;color:var(--muted)}
+    .nav-label{font-size:9.5px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.8px;padding:0 10px;margin:14px 0 4px}
+    .nav-item{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:var(--rs);cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;transition:all .18s;margin-bottom:2px;user-select:none}
+    .nav-item:hover{background:var(--bg);color:var(--text)}
+    .nav-item.active{background:var(--primary-light);color:var(--primary)}
+    .nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+    .sidebar-user{display:flex;align-items:center;gap:10px;padding:11px;background:var(--bg);border-radius:var(--rs);margin-top:auto}
+    .u-avatar{width:34px;height:34px;background:var(--primary);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;flex-shrink:0}
+    .u-name{font-size:12.5px;font-weight:600}.u-plan{font-size:10.5px;color:var(--muted)}
 
-    body {
-      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-    }
+    /* ── Layout ── */
+    .main{margin-left:var(--sw);padding:28px 32px;min-height:100vh}
+    .screen{display:none}.screen.active{display:block}
+    .ph{margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px}
+    .pt{font-size:21px;font-weight:700;letter-spacing:-.3px}.ps{font-size:12.5px;color:var(--muted);margin-top:3px}
 
-    /* ─── Layout ─── */
-    .sidebar {
-      width: var(--sidebar-width);
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      position: fixed; top:0; left:0; height:100vh;
-      z-index: 100;
-      display: flex; flex-direction: column;
-      padding: 24px 16px;
-    }
+    /* ── Member Switcher ── */
+    .member-sw{display:flex;gap:8px;margin-bottom:22px}
+    .mbtn{display:flex;align-items:center;gap:7px;padding:7px 16px;border-radius:22px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:12.5px;font-weight:500;color:var(--muted);transition:all .18s;font-family:inherit}
+    .mbtn:hover{border-color:var(--primary);color:var(--primary)}
+    .mbtn.active{border-color:var(--primary);background:var(--primary);color:#fff}
+    .mavt{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+    .mbtn:not(.active) .mavt{background:var(--bg);color:var(--muted)}
 
-    .sidebar-logo {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 32px; padding: 0 8px;
-    }
-    .logo-icon {
-      width:36px; height:36px;
-      background: var(--primary); border-radius:10px;
-      display:flex; align-items:center; justify-content:center;
-      color:white; font-size:16px; font-weight:700; flex-shrink:0;
-    }
-    .logo-text { font-size:16px; font-weight:700; letter-spacing:-0.3px; }
-    .logo-sub  { font-size:10px; color:var(--text-muted); }
+    /* ── Cards ── */
+    .card{background:var(--surface);border-radius:var(--r);padding:22px;box-shadow:var(--shadow)}
+    .card-title{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
+    .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+    .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .g2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+    .stat{background:var(--surface);border-radius:var(--r);padding:17px 20px;box-shadow:var(--shadow)}
+    .sl{font-size:11px;color:var(--muted);font-weight:500;margin-bottom:5px}
+    .sv{font-size:21px;font-weight:700;letter-spacing:-.5px}
+    .sv.pos{color:var(--pos)}.sv.neg{color:var(--neg)}.sv.pri{color:var(--primary)}
+    .sc{font-size:11px;margin-top:3px;display:flex;align-items:center;gap:4px}
+    .sc.up{color:var(--pos)}.sc.dn{color:var(--neg)}.sc.mu{color:var(--muted)}
 
-    .nav-item {
-      display:flex; align-items:center; gap:12px;
-      padding:11px 12px; border-radius:var(--radius-sm);
-      cursor:pointer; color:var(--text-muted); font-size:14px; font-weight:500;
-      transition:all 0.18s; margin-bottom:4px; user-select:none;
-    }
-    .nav-item:hover { background:var(--bg); color:var(--text); }
-    .nav-item.active { background:var(--primary-light); color:var(--primary); }
-    .nav-icon { font-size:18px; width:24px; text-align:center; flex-shrink:0; }
+    /* ── Hero ── */
+    .hero{background:linear-gradient(135deg,#4E72CC,#7B9EE8);border-radius:var(--r);padding:26px 30px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    .h-label{font-size:12.5px;opacity:.8;margin-bottom:5px}
+    .h-val{font-size:38px;font-weight:700;letter-spacing:-1.5px;line-height:1}
+    .h-sub{font-size:12.5px;opacity:.7;margin-top:7px}
+    .h-right{display:flex;flex-direction:column;gap:10px;text-align:right}
+    .h-ml{font-size:10.5px;opacity:.72}.h-mv{font-size:19px;font-weight:700}
 
-    .sidebar-user {
-      display:flex; align-items:center; gap:10px;
-      padding:12px; background:var(--bg); border-radius:var(--radius-sm);
-      margin-top:auto;
-    }
-    .user-avatar {
-      width:36px; height:36px; background:var(--primary); border-radius:50%;
-      display:flex; align-items:center; justify-content:center;
-      color:white; font-size:14px; font-weight:600; flex-shrink:0;
-    }
-    .user-name  { font-size:13px; font-weight:600; }
-    .user-plan  { font-size:11px; color:var(--text-muted); }
+    /* ── Badges ── */
+    .badge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600}
+    .badge.med{background:var(--warn-light);color:var(--warn)}
+    .badge.low{background:var(--pos-light);color:var(--pos)}
+    .badge.high{background:var(--neg-light);color:var(--neg)}
+    .badge.ok{background:var(--bg);color:var(--muted)}
+    .badge.info{background:var(--primary-light);color:var(--primary)}
 
-    .main-content {
-      margin-left: var(--sidebar-width);
-      padding: 32px 36px;
-      min-height: 100vh;
-    }
+    /* ── AI card ── */
+    .ai-card{background:linear-gradient(135deg,#EBF0FB,#F0FFF4);border-radius:var(--r);padding:18px 22px;border-left:4px solid var(--primary)}
+    .ai-hd{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+    .ai-lb{background:var(--primary);color:#fff;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px}
+    .ai-tl{font-size:12.5px;font-weight:600;color:var(--primary)}
+    .ai-tx{font-size:13px;line-height:1.75;color:var(--text)}
 
-    /* ─── Screens ─── */
-    .screen { display:none; }
-    .screen.active { display:block; }
+    /* ── Notice ── */
+    .notice{background:var(--primary-light);border-radius:var(--rs);padding:12px 15px;display:flex;align-items:flex-start;gap:10px;font-size:12.5px;color:var(--primary);line-height:1.6}
+    .notice.warn{background:var(--warn-light);color:var(--warn)}
 
-    .page-header { margin-bottom:28px; }
-    .page-title  { font-size:22px; font-weight:700; letter-spacing:-0.3px; }
-    .page-subtitle { font-size:13px; color:var(--text-muted); margin-top:4px; }
+    /* ── Asset rows ── */
+    .ar{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+    .ar:last-child{border-bottom:none}
+    .ar-l{display:flex;align-items:center;gap:9px}
+    .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+    .an{font-size:13px;font-weight:500}.as{font-size:10.5px;color:var(--muted);margin-top:1px}
+    .aa{font-size:13px;font-weight:600;text-align:right}.ap{font-size:11.5px;color:var(--muted)}
 
-    /* ─── Cards ─── */
-    .card {
-      background:var(--surface); border-radius:var(--radius);
-      padding:24px; box-shadow:var(--shadow);
-    }
-    .card-title {
-      font-size:11px; font-weight:700; color:var(--text-muted);
-      text-transform:uppercase; letter-spacing:0.8px; margin-bottom:14px;
-    }
+    /* ── Progress bars ── */
+    .pb{margin-bottom:11px}
+    .pb-lbl{display:flex;justify-content:space-between;margin-bottom:5px;font-size:12.5px}
+    .pb-track{height:7px;background:var(--border);border-radius:4px;overflow:hidden}
+    .pb-fill{height:100%;border-radius:4px;transition:width .6s ease}
 
-    /* ─── Grids ─── */
-    .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
-    .grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; }
+    /* ── Alloc layout ── */
+    .af{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
+    .ac{flex:0 0 175px}.al{flex:1;min-width:150px}
+    .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    .li{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted)}
+    .ld{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 
-    /* ─── Stat cards ─── */
-    .stat-card {
-      background:var(--surface); border-radius:var(--radius);
-      padding:20px 24px; box-shadow:var(--shadow);
-    }
-    .stat-label { font-size:12px; color:var(--text-muted); font-weight:500; margin-bottom:8px; }
-    .stat-value { font-size:24px; font-weight:700; letter-spacing:-0.5px; }
-    .stat-value.xl   { font-size:32px; }
-    .stat-value.pos  { color:var(--positive); }
-    .stat-value.pri  { color:var(--primary); }
-    .stat-change { font-size:12px; margin-top:5px; display:flex; align-items:center; gap:4px; }
-    .stat-change.up  { color:var(--positive); }
-    .stat-change.muted { color:var(--text-muted); }
+    /* ── Tab bar ── */
+    .tab-bar{display:flex;background:var(--bg);border-radius:var(--rs);padding:3px;margin-bottom:18px;gap:3px}
+    .tb{flex:1;padding:7px 10px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);transition:all .18s;font-family:inherit}
+    .tb.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
 
-    /* ─── Hero ─── */
-    .home-hero {
-      background:linear-gradient(135deg,#4E72CC 0%,#7B9EE8 100%);
-      border-radius:var(--radius); padding:28px 32px; color:white;
-      display:flex; justify-content:space-between; align-items:center;
-      margin-bottom:20px;
-    }
-    .hero-label { font-size:13px; opacity:0.8; margin-bottom:6px; }
-    .hero-value { font-size:42px; font-weight:700; letter-spacing:-1.5px; line-height:1; }
-    .hero-sub   { font-size:13px; opacity:0.7; margin-top:8px; }
-    .hero-right { text-align:right; }
-    .hero-mini  { margin-bottom:10px; }
-    .hero-mini-label { font-size:11px; opacity:0.72; }
-    .hero-mini-value { font-size:20px; font-weight:700; }
+    /* ── Institution Accordion ── */
+    .inst{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px;background:var(--surface);box-shadow:var(--shadow)}
+    .inst-hd{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;cursor:pointer;transition:background .15s;user-select:none}
+    .inst-hd:hover{background:#FAFBFF}
+    .inst-info{display:flex;align-items:center;gap:11px}
+    .inst-ic{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+    .inst-ic.securities{background:#EBF0FB}.inst-ic.crypto{background:#FFF8E7}.inst-ic.bank{background:#F0FFF4}
+    .inst-nm{font-size:13.5px;font-weight:600}
+    .inst-typ{font-size:9.5px;font-weight:600;padding:2px 7px;border-radius:4px;color:var(--muted);background:var(--bg);margin-left:4px}
+    .inst-right{display:flex;align-items:center;gap:18px}
+    .inst-sum{text-align:right}
+    .inst-tot{font-size:14px;font-weight:700}
+    .inst-pnl{font-size:11.5px;margin-top:2px}
+    .inst-pnl.pos{color:var(--pos)}.inst-pnl.neg{color:var(--neg)}
+    .chev{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--light);font-size:11px;transition:transform .25s;background:var(--bg);flex-shrink:0}
+    .chev.open{transform:rotate(180deg)}
+    .inst-bd{display:none;border-top:1px solid var(--border)}
+    .inst-bd.open{display:block}
+    .htable{width:100%;border-collapse:collapse}
+    .htable th{text-align:left;padding:9px 18px;font-size:10px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px;background:#FAFBFF}
+    .htable th.r{text-align:right}
+    .htable td{padding:11px 18px;border-bottom:1px solid var(--border);font-size:12.5px}
+    .htable td.r{text-align:right}
+    .htable tr:last-child td{border-bottom:none}
+    .htable tr:hover td{background:#FAFBFF}
+    .ctag{display:inline-flex;align-items:center;font-size:9.5px;padding:2px 7px;border-radius:4px;font-weight:600}
+    .tag-fund{background:#F0FFF4;color:#22543D}.tag-stock{background:#EBF0FB;color:#2B4C9B}
+    .tag-cash{background:#F7F8FC;color:#4A5568}.tag-cs{background:#FFF8E7;color:#744210}
+    .tag-ca{background:#FFF5F5;color:#742A2A}.tag-defi{background:#FAF5FF;color:#44337A}
 
-    /* ─── Risk badges ─── */
-    .badge {
-      display:inline-flex; align-items:center;
-      padding:3px 12px; border-radius:20px;
-      font-size:12px; font-weight:600;
-    }
-    .badge.med  { background:var(--warning-light); color:var(--warning); }
-    .badge.low  { background:var(--positive-light); color:var(--positive); }
-    .badge.high { background:var(--negative-light); color:var(--negative); }
-    .badge.ok   { background:var(--bg); color:var(--text-muted); }
+    /* ── Form ── */
+    .form-card{background:var(--surface);border-radius:var(--r);padding:26px;box-shadow:var(--shadow);max-width:660px}
+    .fg{margin-bottom:18px}
+    .fl{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+    .fl .req{color:var(--neg);margin-left:2px}
+    .fc{width:100%;padding:9px 13px;border:1.5px solid var(--border);border-radius:var(--rs);font-size:13.5px;font-family:inherit;color:var(--text);background:var(--surface);transition:border-color .18s;outline:none}
+    .fc:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(91,127,212,.12)}
+    .fs{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23718096' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:34px;cursor:pointer}
+    .fr{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .fhint{font-size:11px;color:var(--muted);margin-top:4px}
+    .btn-p{background:var(--primary);color:#fff;border:none;border-radius:var(--rs);padding:11px 26px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s}
+    .btn-p:hover{background:#4A6CC0;transform:translateY(-1px)}
+    .btn-s{background:var(--bg);color:var(--muted);border:1.5px solid var(--border);border-radius:var(--rs);padding:11px 26px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s}
+    .btn-s:hover{border-color:var(--muted);color:var(--text)}
+    .f-actions{display:flex;gap:10px;margin-top:6px}
+    .f-ok{background:var(--pos-light);border:1px solid var(--pos);border-radius:var(--rs);padding:12px 16px;color:#22543D;font-size:13px;display:none;margin-bottom:18px;align-items:center;gap:9px}
+    .f-ok.show{display:flex}
 
-    /* ─── AI comment ─── */
-    .ai-card {
-      background:linear-gradient(135deg,#EBF0FB 0%,#F0FFF4 100%);
-      border-radius:var(--radius); padding:20px 24px;
-      border-left:4px solid var(--primary);
-    }
-    .ai-header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-    .ai-label  {
-      background:var(--primary); color:white;
-      font-size:10px; font-weight:700; padding:2px 8px;
-      border-radius:4px; letter-spacing:0.5px;
-    }
-    .ai-title  { font-size:13px; font-weight:600; color:var(--primary); }
-    .ai-text   { font-size:14px; line-height:1.75; color:var(--text); }
+    /* ── Risk gauge ── */
+    .gauge-wrap{height:12px;background:linear-gradient(to right,#68D391,#F6AD55,#FC8181);border-radius:6px;position:relative;margin-top:6px}
+    .gauge-pin{position:absolute;top:50%;transform:translate(-50%,-50%);width:19px;height:19px;background:#fff;border:3px solid var(--warn);border-radius:50%;box-shadow:var(--shadow-md);transition:left .3s ease}
 
-    /* ─── Notice banner ─── */
-    .notice {
-      background:var(--primary-light); border-radius:var(--radius-sm);
-      padding:13px 16px; display:flex; align-items:flex-start; gap:10px;
-      font-size:13px; color:var(--primary); line-height:1.6;
-    }
-    .notice-warn { background:var(--warning-light); color:var(--warning); }
+    /* ── VaR Slider ── */
+    .var-wrap{background:var(--bg);border-radius:var(--rs);padding:18px;margin-bottom:18px}
+    .var-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .var-title{font-size:13.5px;font-weight:600}
+    .var-lv{font-size:17px;font-weight:700;color:var(--warn);transition:color .3s}
+    .var-lv.low{color:var(--pos)}.var-lv.high{color:var(--neg)}
+    .var-slider{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:4px;background:linear-gradient(to right,#68D391,#F6AD55,#FC8181);outline:none;cursor:pointer}
+    .var-slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--primary);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+    .var-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--primary);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+    .var-labels{display:flex;justify-content:space-between;margin-top:7px;font-size:10.5px;color:var(--muted);font-weight:500}
+    .vg3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+    .vc{background:var(--surface);border-radius:var(--rs);padding:15px;box-shadow:var(--shadow);border:1px solid var(--border)}
+    .vc-l{font-size:10.5px;color:var(--muted);font-weight:500;margin-bottom:5px}
+    .vc-v{font-size:20px;font-weight:700}
+    .arec{width:100%;border-collapse:collapse}
+    .arec th{text-align:left;padding:8px 11px;font-size:10px;font-weight:700;color:var(--muted);border-bottom:2px solid var(--border);text-transform:uppercase;letter-spacing:.5px}
+    .arec th.r{text-align:right}.arec td{padding:9px 11px;border-bottom:1px solid var(--border);font-size:12.5px}
+    .arec td.r{text-align:right}.arec tr:last-child td{border-bottom:none}
+    .arr{font-size:11px;font-weight:700}.arr.up{color:var(--pos)}.arr.dn{color:var(--neg)}.arr.eq{color:var(--light)}
 
-    /* ─── Asset rows ─── */
-    .asset-row {
-      display:flex; align-items:center; justify-content:space-between;
-      padding:12px 0; border-bottom:1px solid var(--border);
-    }
-    .asset-row:last-child { border-bottom:none; }
-    .asset-left { display:flex; align-items:center; gap:10px; }
-    .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-    .asset-name { font-size:14px; font-weight:500; }
-    .asset-sub  { font-size:11px; color:var(--text-muted); margin-top:1px; }
-    .asset-amount { font-size:14px; font-weight:600; text-align:right; }
-    .asset-pct  { font-size:12px; color:var(--text-muted); }
+    /* ── P&L table ── */
+    .ptable{width:100%;border-collapse:collapse}
+    .ptable th{text-align:left;padding:9px 13px;font-size:10px;font-weight:700;color:var(--muted);border-bottom:2px solid var(--border);text-transform:uppercase;letter-spacing:.5px;background:#FAFBFF}
+    .ptable th.r{text-align:right}.ptable td{padding:10px 13px;border-bottom:1px solid var(--border);font-size:12.5px}
+    .ptable td.r{text-align:right}.ptable tr:last-child td{border-bottom:none}
+    .ptable tr:hover td{background:#FAFBFF}
+    .pp{color:var(--pos);font-weight:600}.pn{color:var(--neg);font-weight:600}
 
-    /* ─── Progress bars ─── */
-    .pb-wrap   { margin-bottom:12px; }
-    .pb-label  { display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; }
-    .pb-track  { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
-    .pb-fill   { height:100%; border-radius:4px; transition:width 0.6s ease; }
+    /* ── Scenario btns ── */
+    .sc-btns{display:flex;gap:7px}
+    .sc-btn{padding:5px 13px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-size:11.5px;font-weight:500;color:var(--muted);transition:all .18s;font-family:inherit}
+    .sc-btn.bull{border-color:var(--pos);background:var(--pos-light);color:var(--pos)}
+    .sc-btn.base{border-color:var(--primary);background:var(--primary-light);color:var(--primary)}
+    .sc-btn.bear{border-color:var(--warn);background:var(--warn-light);color:var(--warn)}
 
-    /* ─── Allocation layout ─── */
-    .alloc-flex { display:flex; gap:32px; align-items:center; flex-wrap:wrap; }
-    .alloc-chart-wrap { flex:0 0 200px; }
-    .alloc-list { flex:1; min-width:180px; }
+    /* ── Rebalance ── */
+    .rbt{width:100%;border-collapse:collapse;font-size:13px}
+    .rbt th{text-align:left;padding:9px 11px;font-weight:600;color:var(--muted);font-size:10.5px;border-bottom:2px solid var(--border);text-transform:uppercase;letter-spacing:.5px}
+    .rbt th.c{text-align:center}.rbt td{padding:10px 11px;border-bottom:1px solid var(--border)}
+    .rbt td.c{text-align:center}.rbt tr:last-child td{border-bottom:none}
+    .sugg{display:flex;gap:13px;padding:13px 0;border-bottom:1px solid var(--border)}
+    .sugg:last-child{border-bottom:none}
+    .pb-b{flex-shrink:0;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;margin-top:2px}
+    .pb-h{background:var(--neg-light);color:var(--neg)}.pb-m{background:var(--warn-light);color:var(--warn)}.pb-l{background:var(--pos-light);color:var(--pos)}
+    .st{font-size:13px;line-height:1.65}.sa{font-size:11.5px;color:var(--muted);margin-top:3px}
 
-    /* ─── Legend ─── */
-    .legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
-    .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); }
-    .legend-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    /* ── Detail box ── */
+    .dbox{background:var(--bg);border-radius:var(--rs);padding:15px}
+    .dr{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px}
+    .dr:last-child{border-bottom:none}.dl{color:var(--muted)}.dv{font-weight:600}
 
-    /* ─── Risk gauge bar ─── */
-    .gauge-bar {
-      height:12px;
-      background:linear-gradient(to right,#68D391,#F6AD55,#FC8181);
-      border-radius:6px; position:relative; margin-top:6px;
-    }
-    .gauge-pin {
-      position:absolute; top:50%; transform:translate(-50%,-50%);
-      width:20px; height:20px; background:white;
-      border:3px solid var(--warning); border-radius:50%;
-      box-shadow:var(--shadow-md);
-    }
+    /* ── Metric grid ── */
+    .mg{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+    .mi{background:var(--bg);border-radius:var(--rs);padding:13px 15px}
+    .ml{font-size:10.5px;color:var(--muted);font-weight:500;margin-bottom:3px}.mv{font-size:17px;font-weight:700}
 
-    /* ─── Detail box ─── */
-    .detail-box { background:var(--bg); border-radius:var(--radius-sm); padding:16px; }
-    .detail-row {
-      display:flex; justify-content:space-between; align-items:center;
-      padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;
-    }
-    .detail-row:last-child { border-bottom:none; }
-    .detail-label { color:var(--text-muted); }
-    .detail-value { font-weight:600; }
+    /* ── Add btn ── */
+    .add-btn{display:inline-flex;align-items:center;gap:7px;background:var(--primary);color:#fff;border:none;border-radius:var(--rs);padding:8px 16px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s}
+    .add-btn:hover{background:#4A6CC0}
 
-    /* ─── Metric grid ─── */
-    .metric-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
-    .metric-item { background:var(--bg); border-radius:var(--radius-sm); padding:14px 16px; }
-    .metric-label { font-size:11px; color:var(--text-muted); font-weight:500; margin-bottom:4px; }
-    .metric-value { font-size:18px; font-weight:700; }
+    /* ── Crypto detail ── */
+    .crypto-box{background:linear-gradient(135deg,#FFF8E7,#FFFAF0);border:1px solid #F6AD55;border-radius:var(--r);padding:18px}
+    .defi-box{background:linear-gradient(135deg,#FAF5FF,#F0FFF4);border:1px solid #B794F4;border-radius:var(--r);padding:18px}
 
-    /* ─── Income sources ─── */
-    .income-row {
-      display:flex; align-items:center; justify-content:space-between;
-      padding:11px 0; border-bottom:1px solid var(--border);
-    }
-    .income-row:last-child { border-bottom:none; }
-    .income-left { display:flex; align-items:center; gap:12px; }
-    .income-icon {
-      width:34px; height:34px; border-radius:8px;
-      display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;
-    }
-    .income-name { font-size:14px; font-weight:500; }
-    .income-sub  { font-size:11px; color:var(--text-muted); margin-top:1px; }
-    .income-right { text-align:right; }
-    .income-monthly { font-weight:700; font-size:14px; }
-    .income-annual  { font-size:11px; color:var(--text-muted); }
+    /* ── Spacing ── */
+    .mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt20{margin-top:20px}.mt24{margin-top:24px}
+    .mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mb20{margin-bottom:20px}.mb24{margin-bottom:24px}
 
-    /* ─── Scenario buttons ─── */
-    .scenario-btns { display:flex; gap:8px; }
-    .sc-btn {
-      padding:5px 14px; border-radius:20px;
-      border:1.5px solid var(--border); background:var(--surface);
-      cursor:pointer; font-size:12px; font-weight:500; color:var(--text-muted);
-      transition:all 0.18s; font-family:'Noto Sans JP',sans-serif;
+    /* ── Mobile ── */
+    .top-bar{display:none;position:fixed;top:0;left:0;right:0;height:54px;background:var(--surface);border-bottom:1px solid var(--border);z-index:100;align-items:center;padding:0 15px;justify-content:space-between}
+    .bn{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:100;padding:5px 0 calc(5px + env(safe-area-inset-bottom))}
+    .bni{display:flex;justify-content:space-around}
+    .bni-it{display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px 7px;cursor:pointer;color:var(--light);font-size:9px;font-weight:500;transition:color .18s;user-select:none}
+    .bni-it .nav-icon{font-size:19px;width:auto}.bni-it.active{color:var(--primary)}
+    @media(max-width:768px){
+      .sidebar{display:none}.top-bar{display:flex}.bn{display:block}
+      .main{margin-left:0;padding:62px 13px 82px}
+      .g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:1fr}.g2{grid-template-columns:1fr}
+      .mg{grid-template-columns:repeat(2,1fr)}.vg3{grid-template-columns:repeat(2,1fr)}
+      .h-val{font-size:28px}.hero{flex-direction:column;gap:14px;padding:20px}
+      .h-right{text-align:left;flex-direction:row;flex-wrap:wrap;gap:18px}
+      .fr{grid-template-columns:1fr}.htable th,.htable td{padding:8px 11px}
     }
-    .sc-btn.active-bull { border-color:var(--positive); background:var(--positive-light); color:var(--positive); }
-    .sc-btn.active-base { border-color:var(--primary);  background:var(--primary-light);  color:var(--primary); }
-    .sc-btn.active-bear { border-color:var(--warning);  background:var(--warning-light);  color:var(--warning); }
-
-    /* ─── Rebalance table ─── */
-    .rb-table { width:100%; border-collapse:collapse; font-size:14px; }
-    .rb-table th {
-      text-align:left; padding:10px 12px;
-      font-weight:600; color:var(--text-muted); font-size:11px;
-      border-bottom:2px solid var(--border);
-    }
-    .rb-table th.c { text-align:center; }
-    .rb-table td { padding:12px; border-bottom:1px solid var(--border); }
-    .rb-table td.c { text-align:center; }
-    .rb-table tr:last-child td { border-bottom:none; }
-
-    /* ─── Suggestion items ─── */
-    .suggestion {
-      display:flex; gap:14px;
-      padding:14px 0; border-bottom:1px solid var(--border);
-    }
-    .suggestion:last-child { border-bottom:none; }
-    .pri-badge {
-      flex-shrink:0; width:28px; height:28px; border-radius:50%;
-      display:flex; align-items:center; justify-content:center;
-      font-size:11px; font-weight:700; margin-top:2px;
-    }
-    .pri-h { background:var(--negative-light); color:var(--negative); }
-    .pri-m { background:var(--warning-light);  color:var(--warning); }
-    .pri-l { background:var(--positive-light); color:var(--positive); }
-    .sug-text   { font-size:14px; line-height:1.65; color:var(--text); }
-    .sug-action { font-size:12px; color:var(--text-muted); margin-top:4px; }
-
-    /* ─── Sub-tabs ─── */
-    .tab-bar {
-      display:flex; background:var(--bg); border-radius:var(--radius-sm);
-      padding:4px; margin-bottom:20px; gap:4px;
-    }
-    .tab-btn {
-      flex:1; padding:8px 12px; border-radius:8px; border:none;
-      background:transparent; cursor:pointer; font-size:13px; font-weight:500;
-      color:var(--text-muted); transition:all 0.18s; font-family:'Noto Sans JP',sans-serif;
-    }
-    .tab-btn.active { background:var(--surface); color:var(--text); box-shadow:var(--shadow); }
-
-    /* ─── Mobile top bar ─── */
-    .top-bar {
-      display:none; position:fixed; top:0; left:0; right:0; height:56px;
-      background:var(--surface); border-bottom:1px solid var(--border);
-      z-index:100; align-items:center; padding:0 20px;
-      justify-content:space-between;
-    }
-    .top-bar-logo { display:flex; align-items:center; gap:8px; }
-
-    /* ─── Mobile bottom nav ─── */
-    .bottom-nav {
-      display:none; position:fixed; bottom:0; left:0; right:0;
-      background:var(--surface); border-top:1px solid var(--border);
-      z-index:100; padding:8px 0 calc(8px + env(safe-area-inset-bottom));
-    }
-    .bnav-inner { display:flex; justify-content:space-around; }
-    .bnav-item {
-      display:flex; flex-direction:column; align-items:center; gap:3px;
-      padding:4px 10px; cursor:pointer; color:var(--text-light);
-      font-size:10px; font-weight:500; transition:color 0.18s; user-select:none;
-    }
-    .bnav-item .nav-icon { font-size:20px; width:auto; }
-    .bnav-item.active { color:var(--primary); }
-
-    /* ─── Spacing helpers ─── */
-    .mt8  { margin-top:8px;  }
-    .mt12 { margin-top:12px; }
-    .mt16 { margin-top:16px; }
-    .mt20 { margin-top:20px; }
-    .mt24 { margin-top:24px; }
-    .mb16 { margin-bottom:16px; }
-    .mb20 { margin-bottom:20px; }
-    .mb24 { margin-bottom:24px; }
-
-    /* ─── Responsive ─── */
-    @media (max-width:768px) {
-      .sidebar { display:none; }
-      .top-bar { display:flex; }
-      .bottom-nav { display:block; }
-      .main-content { margin-left:0; padding:74px 16px 90px; }
-      .grid-3 { grid-template-columns:1fr; }
-      .grid-2 { grid-template-columns:1fr; }
-      .metric-grid { grid-template-columns:repeat(2,1fr); }
-      .hero-value { font-size:30px; }
-      .home-hero { flex-direction:column; gap:16px; padding:22px; }
-      .hero-right { text-align:left; display:flex; gap:24px; }
-    }
-    @media (min-width:769px) and (max-width:1100px) {
-      .grid-3 { grid-template-columns:repeat(2,1fr); }
-      .main-content { padding:28px 24px; }
+    @media(min-width:769px)and(max-width:1200px){
+      .g4{grid-template-columns:repeat(2,1fr)}.main{padding:24px 22px}
     }
   </style>
 </head>
@@ -363,708 +257,1097 @@
 
 <!-- ── Mobile Top Bar ── -->
 <header class="top-bar">
-  <div class="top-bar-logo">
-    <div class="logo-icon" style="width:30px;height:30px;font-size:13px;">M</div>
-    <span style="font-size:15px;font-weight:700;">My Assets</span>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="logo-icon" style="width:28px;height:28px;font-size:12px">M</div>
+    <span style="font-size:14px;font-weight:700">My Assets</span>
   </div>
-  <div style="display:flex;align-items:center;gap:10px;">
-    <span style="font-size:12px;color:var(--text-muted);">2026年4月</span>
-    <div class="user-avatar" style="width:30px;height:30px;font-size:12px;">山</div>
+  <div style="display:flex;align-items:center;gap:9px">
+    <span style="font-size:11.5px;color:var(--muted)">2026年4月</span>
+    <div class="u-avatar" style="width:28px;height:28px;font-size:11px" id="mb-avatar-top">本</div>
   </div>
 </header>
 
 <!-- ── Sidebar ── -->
 <nav class="sidebar">
-  <div class="sidebar-logo">
+  <div class="logo">
     <div class="logo-icon">M</div>
-    <div>
-      <div class="logo-text">My Assets</div>
-      <div class="logo-sub">資産管理ダッシュボード</div>
-    </div>
+    <div><div class="logo-text">My Assets</div><div class="logo-sub">家計資産管理</div></div>
   </div>
-
-  <div>
-    <div class="nav-item active"   onclick="go('home',this)">      <span class="nav-icon">🏠</span> ホーム</div>
-    <div class="nav-item"          onclick="go('alloc',this)">     <span class="nav-icon">📊</span> 資産配分</div>
-    <div class="nav-item"          onclick="go('risk',this)">      <span class="nav-icon">🛡️</span> リスク</div>
-    <div class="nav-item"          onclick="go('income',this)">    <span class="nav-icon">📈</span> 収益見通し</div>
-    <div class="nav-item"          onclick="go('rebalance',this)"> <span class="nav-icon">⚖️</span> リバランス提案</div>
-  </div>
-
+  <div class="nav-label">メイン</div>
+  <div class="nav-item active"   onclick="go('home',this)"><span class="nav-icon">🏠</span>ダッシュボード</div>
+  <div class="nav-item"          onclick="go('holdings',this)"><span class="nav-icon">📂</span>保有資産</div>
+  <div class="nav-item"          onclick="go('register',this)"><span class="nav-icon">➕</span>資産登録</div>
+  <div class="nav-label">分析</div>
+  <div class="nav-item"          onclick="go('alloc',this)"><span class="nav-icon">📊</span>資産配分</div>
+  <div class="nav-item"          onclick="go('risk',this)"><span class="nav-icon">🛡️</span>リスク分析</div>
+  <div class="nav-item"          onclick="go('pnl',this)"><span class="nav-icon">📈</span>損益推移</div>
+  <div class="nav-item"          onclick="go('income',this)"><span class="nav-icon">💰</span>収益見通し</div>
+  <div class="nav-item"          onclick="go('rebalance',this)"><span class="nav-icon">⚖️</span>リバランス</div>
   <div class="sidebar-user">
-    <div class="user-avatar">山</div>
-    <div>
-      <div class="user-name">山田 家</div>
-      <div class="user-plan">プレミアムプラン</div>
-    </div>
+    <div class="u-avatar" id="sb-avatar">本</div>
+    <div><div class="u-name" id="sb-name">本人の資産</div><div class="u-plan">2026年4月</div></div>
   </div>
 </nav>
 
-<!-- ══════════════════════════════════════
+<!-- ══════════════════════════════
      MAIN CONTENT
-═══════════════════════════════════════ -->
-<main class="main-content">
+══════════════════════════════ -->
+<main class="main">
 
-<!-- ░░░ 1. HOME ░░░ -->
+<!-- ░░░ HOME ░░░ -->
 <section class="screen active" id="s-home">
-  <div class="page-header">
-    <h1 class="page-title">おはようございます、山田さん 👋</h1>
-    <p class="page-subtitle">2026年4月21日（火）・ 最終更新: 本日 9:32</p>
+  <div class="member-sw">
+    <button class="mbtn active" onclick="setMember('self',this)"><div class="mavt">本</div>本人</button>
+    <button class="mbtn" onclick="setMember('spouse',this)"><div class="mavt">妻</div>妻</button>
+    <button class="mbtn" onclick="setMember('household',this)"><div class="mavt">家</div>世帯合算</button>
   </div>
-
-  <!-- Hero -->
-  <div class="home-hero mb24">
+  <div class="ph">
     <div>
-      <div class="hero-label">純資産</div>
-      <div class="hero-value">9,650<span style="font-size:22px;font-weight:400;opacity:0.8;">万円</span></div>
-      <div class="hero-sub">総資産 1億2,450万円 ／ 負債 2,800万円</div>
-    </div>
-    <div class="hero-right">
-      <div class="hero-mini">
-        <div class="hero-mini-label">今月の予想収益</div>
-        <div class="hero-mini-value">+ 18.4万円</div>
-      </div>
-      <div class="hero-mini">
-        <div class="hero-mini-label">リスク水準</div>
-        <div class="hero-mini-value">中リスク</div>
-      </div>
+      <h1 class="pt" id="home-greeting">おはようございます 👋</h1>
+      <p class="ps">2026年4月21日（月）・ 最終更新: 本日 9:32</p>
     </div>
   </div>
 
-  <!-- Stats Row -->
-  <div class="grid-3 mb24">
-    <div class="stat-card">
-      <div class="stat-label">すぐ使えるお金</div>
-      <div class="stat-value">22%</div>
-      <div class="stat-change up">▲ 2,734万円相当</div>
+  <div class="hero mb24">
+    <div>
+      <div class="h-label">評価総額</div>
+      <div class="h-val" id="home-total">¥1,180万円</div>
+      <div class="h-sub" id="home-cost">取得総額 ¥984万円</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">年間予想収益</div>
-      <div class="stat-value pos">235万円</div>
-      <div class="stat-change muted">配当・利息・家賃など</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">今月の変化</div>
-      <div class="stat-value pos">+ 42万円</div>
-      <div class="stat-change up">▲ 0.44%（先月比）</div>
+    <div class="h-right">
+      <div><div class="h-ml">含み損益</div><div class="h-mv" id="home-pnl">＋¥196万円</div></div>
+      <div><div class="h-ml">損益率</div><div class="h-mv" id="home-rate">＋20.0%</div></div>
     </div>
   </div>
 
-  <!-- Two column -->
-  <div class="grid-2 mb24">
-    <!-- Mini chart + legend -->
+  <div class="g4 mb24">
+    <div class="stat">
+      <div class="sl">評価総額</div>
+      <div class="sv" id="h-stat-total">¥1,180万</div>
+      <div class="sc up" id="h-stat-pnl">▲ ¥196万円 含み益</div>
+    </div>
+    <div class="stat">
+      <div class="sl">含み損益</div>
+      <div class="sv pos" id="h-stat-pnl2">＋¥196万円</div>
+      <div class="sc up" id="h-stat-rate">＋20.0%</div>
+    </div>
+    <div class="stat">
+      <div class="sl">流動性の高い資産</div>
+      <div class="sv pri" id="h-stat-liq">44.5%</div>
+      <div class="sc mu" id="h-stat-liq2">現預金＋暗号資産現物</div>
+    </div>
+    <div class="stat">
+      <div class="sl">今月の変化</div>
+      <div class="sv pos" id="h-stat-change">＋¥24万円</div>
+      <div class="sc up">▲ 2.1%（先月比）</div>
+    </div>
+  </div>
+
+  <div class="g2 mb24">
     <div class="card">
       <div class="card-title">資産配分サマリー</div>
-      <div class="alloc-flex">
-        <div class="alloc-chart-wrap">
-          <canvas id="homeChart" height="180"></canvas>
-        </div>
-        <div class="alloc-list">
-          <div class="asset-row">
-            <div class="asset-left"><div class="dot" style="background:#5B7FD4;"></div><span class="asset-name">株式</span></div>
-            <span style="font-weight:600;font-size:13px;">32%</span>
-          </div>
-          <div class="asset-row">
-            <div class="asset-left"><div class="dot" style="background:#68D391;"></div><span class="asset-name">投資信託/ETF</span></div>
-            <span style="font-weight:600;font-size:13px;">20%</span>
-          </div>
-          <div class="asset-row">
-            <div class="asset-left"><div class="dot" style="background:#A0AEC0;"></div><span class="asset-name">現金</span></div>
-            <span style="font-weight:600;font-size:13px;">18%</span>
-          </div>
-          <div class="asset-row">
-            <div class="asset-left"><div class="dot" style="background:#FC8181;"></div><span class="asset-name">不動産</span></div>
-            <span style="font-weight:600;font-size:13px;">10%</span>
-          </div>
-          <div class="asset-row">
-            <div class="asset-left"><div class="dot" style="background:#F6AD55;"></div><span class="asset-name">債券</span></div>
-            <span style="font-weight:600;font-size:13px;">10%</span>
-          </div>
-          <div class="asset-row">
-            <div class="asset-left"><div class="dot" style="background:#B794F4;"></div><span class="asset-name">暗号資産</span></div>
-            <span style="font-weight:600;font-size:13px;">8%</span>
-          </div>
-        </div>
+      <div class="af">
+        <div class="ac"><canvas id="homeChart" height="175"></canvas></div>
+        <div class="al" id="home-alloc-list"><!-- JS rendered --></div>
       </div>
     </div>
-
-    <!-- AI + Recent changes -->
-    <div style="display:flex;flex-direction:column;gap:16px;">
+    <div style="display:flex;flex-direction:column;gap:14px">
       <div class="ai-card">
-        <div class="ai-header">
-          <span class="ai-label">AI分析</span>
-          <span class="ai-title">今月の気づき</span>
-        </div>
-        <p class="ai-text">全体的にバランスの良い資産構成です。株式比率が目標より4ポイント高めです。暗号資産の上昇により純資産は先月比＋42万円となりました。外貨資産が49%と高めのため、円高局面では注意が必要です。</p>
+        <div class="ai-hd"><span class="ai-lb">分析</span><span class="ai-tl">今月の気づき</span></div>
+        <p class="ai-tx" id="home-ai-comment">投資信託を中心にバランスの取れた構成です。暗号資産（現物）が評価額の約19%を占めており、ボラティリティに注意が必要です。流動性の高い資産は44.5%で緊急時の備えとして十分な水準です。</p>
       </div>
       <div class="card">
         <div class="card-title">最近の変化</div>
-        <div style="font-size:13px;line-height:1.7;">
-          <div class="asset-row"><span>📈 米国株ポートフォリオ</span><span style="color:var(--positive);font-weight:600;">+2.3%</span></div>
-          <div class="asset-row"><span>₿ 暗号資産（BTC/ETH）</span><span style="color:var(--positive);font-weight:600;">+5.1%</span></div>
-          <div class="asset-row"><span>🏠 収益不動産</span><span style="color:var(--text-muted);font-weight:600;">±0%</span></div>
-          <div class="asset-row" style="border-bottom:none;"><span>💴 円/ドル相場</span><span style="color:var(--negative);font-weight:600;">–1.2%（円高）</span></div>
-        </div>
+        <div class="ar"><span>📈 eMAXIS Slim S&amp;P500</span><span style="color:var(--pos);font-weight:600">+18.0%</span></div>
+        <div class="ar"><span>₿ Bitcoin (BTC)</span><span style="color:var(--pos);font-weight:600">+166.7%</span></div>
+        <div class="ar"><span>🌐 eMAXIS Slim 全世界</span><span style="color:var(--pos);font-weight:600">+15.0%</span></div>
+        <div class="ar"><span>◎ Solana (SOL)</span><span style="color:var(--neg);font-weight:600">–20.0%</span></div>
       </div>
     </div>
   </div>
-
   <div class="notice">
-    <span style="font-size:16px;">💡</span>
-    <div>株式比率が目標配分(28%)を4ポイント上回っています。<strong>リバランス提案</strong>でシミュレーションを確認してみましょう。</div>
+    <span style="font-size:15px">💡</span>
+    <div>暗号資産（アクティブ運用・SOL）が–20%の含み損です。<strong>損益推移</strong>で詳細を確認できます。</div>
   </div>
 </section>
 
-<!-- ░░░ 2. ALLOCATION ░░░ -->
+<!-- ░░░ HOLDINGS ░░░ -->
+<section class="screen" id="s-holdings">
+  <div class="member-sw">
+    <button class="mbtn active" onclick="setMemberHoldings('self',this)"><div class="mavt">本</div>本人</button>
+    <button class="mbtn" onclick="setMemberHoldings('spouse',this)"><div class="mavt">妻</div>妻</button>
+    <button class="mbtn" onclick="setMemberHoldings('household',this)"><div class="mavt">家</div>世帯合算</button>
+  </div>
+  <div class="ph">
+    <div><h1 class="pt">保有資産</h1><p class="ps" id="holdings-subtitle">金融機関別ポジション一覧</p></div>
+    <button class="add-btn" onclick="go('register', document.querySelector('.nav-item:nth-child(5)'))">＋ 資産を登録</button>
+  </div>
+  <div id="holdings-list"><!-- JS rendered --></div>
+  <div class="mt16">
+    <div class="card" style="border:2px dashed var(--border);background:transparent;box-shadow:none;text-align:center;padding:28px;cursor:pointer" onclick="go('register',document.querySelectorAll('.nav-item')[2])">
+      <div style="font-size:28px;margin-bottom:8px">➕</div>
+      <div style="font-size:13.5px;font-weight:600;color:var(--muted)">新しい資産を登録する</div>
+      <div style="font-size:12px;color:var(--light);margin-top:4px">証券・暗号資産・預金など</div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░░ REGISTER ░░░ -->
+<section class="screen" id="s-register">
+  <div class="ph"><div><h1 class="pt">資産登録</h1><p class="ps">保有ポジションを手動で登録します</p></div></div>
+  <div class="f-ok" id="form-ok">✅ 登録しました！保有資産ページで確認できます。</div>
+  <div class="form-card">
+    <div class="fg">
+      <label class="fl">誰の資産か<span class="req">*</span></label>
+      <select class="fc fs" id="f-member">
+        <option value="self">本人</option>
+        <option value="spouse">妻</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">金融機関<span class="req">*</span></label>
+      <select class="fc fs" id="f-inst">
+        <option value="">選択してください</option>
+        <option value="sbi">SBI証券</option>
+        <option value="rakuten">楽天証券</option>
+        <option value="monex">マネックス証券</option>
+        <option value="sbi_bank">住信SBIネット銀行</option>
+        <option value="binance">Binance</option>
+        <option value="bitflyer">bitFlyer</option>
+        <option value="bybit">Bybit</option>
+        <option value="other">その他</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl">資産クラス<span class="req">*</span></label>
+      <select class="fc fs" id="f-class" onchange="toggleActiveField()">
+        <option value="">選択してください</option>
+        <option value="cash">現預金</option>
+        <option value="stock">株式</option>
+        <option value="fund">投資信託 / ETF</option>
+        <option value="bond">債券</option>
+        <option value="crypto_spot">暗号資産（現物）</option>
+        <option value="crypto_active">暗号資産（アクティブ運用）</option>
+        <option value="defi">DeFi</option>
+        <option value="other">その他</option>
+      </select>
+    </div>
+    <div class="fg" id="f-defi-row" style="display:none">
+      <label class="fl">DeFiプロトコル名</label>
+      <input class="fc" id="f-defi" type="text" placeholder="例：Aave、Uniswap、Lido など">
+    </div>
+    <div class="fg">
+      <label class="fl">銘柄名 / トークン名<span class="req">*</span></label>
+      <input class="fc" id="f-name" type="text" placeholder="例：eMAXIS Slim 全世界株式、Bitcoin (BTC)">
+    </div>
+    <div class="fg">
+      <label class="fl">ティッカー / シンボル（任意）</label>
+      <input class="fc" id="f-symbol" type="text" placeholder="例：BTC、ETH、7203.T">
+      <div class="fhint">将来のAPI自動取得に使用します</div>
+    </div>
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">保有数量<span class="req">*</span></label>
+        <input class="fc" id="f-qty" type="number" step="any" placeholder="例：0.1、100">
+      </div>
+      <div class="fg">
+        <label class="fl">単位</label>
+        <input class="fc" id="f-unit" type="text" placeholder="例：口、株、BTC、枚">
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">取得単価（円）<span class="req">*</span></label>
+        <input class="fc" id="f-price" type="number" step="any" placeholder="例：20000">
+        <div class="fhint">1口・1株・1枚あたりの取得価格</div>
+      </div>
+      <div class="fg">
+        <label class="fl">取得日</label>
+        <input class="fc" id="f-date" type="date" value="2026-04-21">
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">メモ（任意）</label>
+      <input class="fc" id="f-note" type="text" placeholder="例：つみたてNISA枠、スポット購入 など">
+    </div>
+    <div class="notice mb16" style="font-size:12px">
+      <span>ℹ️</span>
+      <div id="db-status">Supabase未接続 — データはブラウザのローカルストレージに保存されます。設定からSupabaseを接続すると永続化できます。</div>
+    </div>
+    <div class="f-actions">
+      <button class="btn-p" onclick="submitForm()">登録する</button>
+      <button class="btn-s" onclick="clearForm()">クリア</button>
+    </div>
+  </div>
+
+  <!-- Supabase Settings -->
+  <div class="card mt24" style="max-width:660px">
+    <div class="card-title">⚙️ Supabase 接続設定</div>
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:16px;line-height:1.6">Supabaseプロジェクトを作成し、URLとAnon Keyを入力するとデータがクラウドに保存されます。</p>
+    <div class="fg">
+      <label class="fl">Supabase URL</label>
+      <input class="fc" id="sb-url" type="text" placeholder="https://xxxx.supabase.co" value="">
+    </div>
+    <div class="fg">
+      <label class="fl">Supabase Anon Key</label>
+      <input class="fc" id="sb-key" type="text" placeholder="eyJhbGciOiJIUzI1NiIs...">
+    </div>
+    <button class="btn-p" onclick="saveSupabaseConfig()">接続を保存</button>
+  </div>
+</section>
+
+<!-- ░░░ ALLOCATION ░░░ -->
 <section class="screen" id="s-alloc">
-  <div class="page-header">
-    <h1 class="page-title">資産配分</h1>
-    <p class="page-subtitle">総資産 1億2,450万円の内訳</p>
+  <div class="member-sw">
+    <button class="mbtn active" onclick="setMemberAlloc('self',this)"><div class="mavt">本</div>本人</button>
+    <button class="mbtn" onclick="setMemberAlloc('spouse',this)"><div class="mavt">妻</div>妻</button>
+    <button class="mbtn" onclick="setMemberAlloc('household',this)"><div class="mavt">家</div>世帯合算</button>
   </div>
-
+  <div class="ph"><div><h1 class="pt">資産配分</h1><p class="ps" id="alloc-subtitle">総資産の内訳</p></div></div>
   <div class="tab-bar">
-    <button class="tab-btn active" onclick="allocTab('asset',this)">資産クラス別</button>
-    <button class="tab-btn"        onclick="allocTab('currency',this)">通貨別</button>
-    <button class="tab-btn"        onclick="allocTab('account',this)">口座別</button>
+    <button class="tb active" onclick="allocTab('asset',this)">資産クラス別</button>
+    <button class="tb" onclick="allocTab('crypto',this)">暗号資産内訳</button>
+    <button class="tb" onclick="allocTab('liquidity',this)">流動性別</button>
   </div>
 
-  <!-- ── Asset Class ── -->
+  <!-- Asset class tab -->
   <div id="at-asset">
-    <div class="grid-2 mb20">
+    <div class="g2 mb20">
       <div class="card">
         <div class="card-title">資産クラス別配分</div>
-        <div style="max-width:260px;margin:0 auto;">
-          <canvas id="allocChart"></canvas>
-        </div>
-        <div class="legend mt16">
-          <div class="legend-item"><div class="legend-dot" style="background:#A0AEC0;"></div>現金</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#5B7FD4;"></div>株式</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#68D391;"></div>投資信託/ETF</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#F6AD55;"></div>債券</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#B794F4;"></div>暗号資産</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#FC8181;"></div>不動産</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#CBD5E0;"></div>その他</div>
-        </div>
+        <div style="max-width:240px;margin:0 auto"><canvas id="allocChart"></canvas></div>
+        <div class="legend mt16" id="alloc-legend"><!-- JS --></div>
       </div>
       <div class="card">
-        <div class="card-title">主要資産一覧</div>
-        <div class="asset-row">
-          <div class="asset-left"><div class="dot" style="background:#A0AEC0;"></div><div><div class="asset-name">現金・預金</div><div class="asset-sub">普通・定期預金</div></div></div>
-          <div class="asset-amount"><div>2,241万円</div><div class="asset-pct">18%</div></div>
-        </div>
-        <div class="asset-row">
-          <div class="asset-left"><div class="dot" style="background:#5B7FD4;"></div><div><div class="asset-name">株式</div><div class="asset-sub">国内・海外株式</div></div></div>
-          <div class="asset-amount"><div>3,984万円</div><div class="asset-pct">32%</div></div>
-        </div>
-        <div class="asset-row">
-          <div class="asset-left"><div class="dot" style="background:#68D391;"></div><div><div class="asset-name">投資信託 / ETF</div><div class="asset-sub">インデックスファンド中心</div></div></div>
-          <div class="asset-amount"><div>2,490万円</div><div class="asset-pct">20%</div></div>
-        </div>
-        <div class="asset-row">
-          <div class="asset-left"><div class="dot" style="background:#F6AD55;"></div><div><div class="asset-name">債券</div><div class="asset-sub">国債・社債</div></div></div>
-          <div class="asset-amount"><div>1,245万円</div><div class="asset-pct">10%</div></div>
-        </div>
-        <div class="asset-row">
-          <div class="asset-left"><div class="dot" style="background:#B794F4;"></div><div><div class="asset-name">暗号資産</div><div class="asset-sub">BTC, ETH</div></div></div>
-          <div class="asset-amount"><div>996万円</div><div class="asset-pct">8%</div></div>
-        </div>
-        <div class="asset-row">
-          <div class="asset-left"><div class="dot" style="background:#FC8181;"></div><div><div class="asset-name">不動産</div><div class="asset-sub">収益不動産（1棟）</div></div></div>
-          <div class="asset-amount"><div>1,245万円</div><div class="asset-pct">10%</div></div>
-        </div>
-        <div class="asset-row">
-          <div class="asset-left"><div class="dot" style="background:#CBD5E0;"></div><div><div class="asset-name">その他</div><div class="asset-sub">金・商品など</div></div></div>
-          <div class="asset-amount"><div>249万円</div><div class="asset-pct">2%</div></div>
-        </div>
+        <div class="card-title">資産クラス一覧</div>
+        <div id="alloc-list"><!-- JS --></div>
       </div>
     </div>
     <div class="ai-card">
-      <div class="ai-header"><span class="ai-label">コメント</span><span class="ai-title">配分の評価</span></div>
-      <p class="ai-text">成長資産（株式＋投資信託）が52%と比較的高めですが、不動産・債券による安定収益源も確保されています。現金比率18%は緊急時に十分な水準です。暗号資産は全体の8%で、ハイリスクながら許容範囲内です。</p>
+      <div class="ai-hd"><span class="ai-lb">コメント</span><span class="ai-tl">配分の評価</span></div>
+      <p class="ai-tx" id="alloc-comment">投資信託（インデックス）が52%を占め、分散投資として適切な構成です。暗号資産は現物・アクティブ合計で22%と高めのため、リスク許容度に応じて調整を検討してください。</p>
     </div>
   </div>
 
-  <!-- ── Currency ── -->
-  <div id="at-currency" style="display:none;">
+  <!-- Crypto breakdown tab -->
+  <div id="at-crypto" style="display:none">
+    <div class="g2 mb20">
+      <div class="crypto-box">
+        <div class="card-title" style="color:#92400E">暗号資産の内訳（現物・アクティブ運用）</div>
+        <div class="ar">
+          <div class="ar-l"><div class="dot" style="background:#F6A623"></div><div><div class="an">Bitcoin (BTC)</div><div class="as">現物保有</div></div></div>
+          <div class="aa"><div>¥180万円</div><div class="ap">84.5%</div></div>
+        </div>
+        <div class="ar">
+          <div class="ar-l"><div class="dot" style="background:#627EEA"></div><div><div class="an">Ethereum (ETH)</div><div class="as">現物保有</div></div></div>
+          <div class="aa"><div>¥45万円</div><div class="ap" id="eth-pct">21.2%</div></div>
+        </div>
+        <div class="ar">
+          <div class="ar-l"><div class="dot" style="background:#9945FF"></div><div><div class="an">Solana (SOL)</div><div class="as">アクティブ運用</div></div></div>
+          <div class="aa"><div>¥40万円</div><div class="ap">18.8%</div></div>
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #F6AD55">
+          <div style="font-size:12px;color:#92400E;line-height:1.6">💡 <strong>アクティブ運用</strong>とは、ステーキング・レンディング・デリバティブなどを通じた能動的な運用を指します。現物保有より高リターン・高リスクです。</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">暗号資産 損益サマリー</div>
+        <div class="dbox">
+          <div class="dr"><span class="dl">BTC 取得総額</span><span class="dv">¥66万円</span></div>
+          <div class="dr"><span class="dl">BTC 現在評価額</span><span class="dv">¥180万円</span></div>
+          <div class="dr"><span class="dl">BTC 含み損益</span><span class="dv" style="color:var(--pos)">+¥114万円</span></div>
+          <div class="dr"><span class="dl">ETH 含み損益</span><span class="dv" style="color:var(--pos)">+¥7万円</span></div>
+          <div class="dr"><span class="dl">SOL 含み損益</span><span class="dv" style="color:var(--neg)">–¥10万円</span></div>
+          <div class="dr"><span class="dl">暗号資産 合計損益</span><span class="dv" style="color:var(--pos)">+¥111万円</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="defi-box mt16">
+      <div class="card-title" style="color:#44337A">DeFiポジション（将来拡張）</div>
+      <p style="font-size:13px;color:#44337A;line-height:1.7">現在DeFiポジションは登録されていません。資産登録フォームで「DeFi」を選択すると、こちらに表示されます。<br>将来的にはAave・Uniswap・Lidoなどのプロトコル残高をAPI経由で自動取得予定です。</p>
+    </div>
+  </div>
+
+  <!-- Liquidity tab -->
+  <div id="at-liquidity" style="display:none">
     <div class="card mb20">
-      <div class="card-title">通貨別配分</div>
-      <div style="max-width:280px;margin:0 auto 24px;">
-        <canvas id="currChart"></canvas>
+      <div class="card-title">流動性別の資産配分</div>
+      <div class="mb20">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">「流動性の高い資産」とは、必要時に素早く現金化できる資産の総称です。現預金だけでなく、取引所に上場された暗号資産なども含みます。</div>
+        <div class="pb"><div class="pb-lbl"><span>🟢 高流動性（現預金・暗号資産現物）</span><span style="font-weight:600" id="liq-high-pct">44.5%</span></div><div class="pb-track"><div class="pb-fill" style="background:var(--pos)" id="liq-high-bar"></div></div></div>
+        <div class="pb"><div class="pb-lbl"><span>🟡 中流動性（投資信託・ETF）</span><span style="font-weight:600" id="liq-mid-pct">52.1%</span></div><div class="pb-track"><div class="pb-fill" style="background:var(--primary)" id="liq-mid-bar"></div></div></div>
+        <div class="pb"><div class="pb-lbl"><span>🔴 低流動性（アクティブ運用・ロック）</span><span style="font-weight:600" id="liq-low-pct">3.4%</span></div><div class="pb-track"><div class="pb-fill" style="background:var(--neg)" id="liq-low-bar"></div></div></div>
       </div>
-      <div class="pb-wrap"><div class="pb-label"><span>日本円（JPY）</span><span style="font-weight:600;">48%</span></div><div class="pb-track"><div class="pb-fill" style="width:48%;background:#5B7FD4;"></div></div></div>
-      <div class="pb-wrap"><div class="pb-label"><span>米ドル（USD）</span><span style="font-weight:600;">35%</span></div><div class="pb-track"><div class="pb-fill" style="width:35%;background:#68D391;"></div></div></div>
-      <div class="pb-wrap"><div class="pb-label"><span>暗号資産（BTC/ETH）</span><span style="font-weight:600;">8%</span></div><div class="pb-track"><div class="pb-fill" style="width:8%;background:#B794F4;"></div></div></div>
-      <div class="pb-wrap"><div class="pb-label"><span>ユーロ（EUR）</span><span style="font-weight:600;">6%</span></div><div class="pb-track"><div class="pb-fill" style="width:6%;background:#F6AD55;"></div></div></div>
-      <div class="pb-wrap" style="margin-bottom:0;"><div class="pb-label"><span>その他</span><span style="font-weight:600;">3%</span></div><div class="pb-track"><div class="pb-fill" style="width:3%;background:#CBD5E0;"></div></div></div>
+      <div class="dbox">
+        <div class="dr"><span class="dl">流動性の高い資産 合計</span><span class="dv" id="liq-high-amt">¥525万円</span></div>
+        <div class="dr"><span class="dl">うち現預金</span><span class="dv">¥300万円</span></div>
+        <div class="dr"><span class="dl">うち暗号資産（現物）</span><span class="dv">¥225万円</span></div>
+        <div class="dr"><span class="dl">中流動性資産（投資信託）</span><span class="dv">¥616万円</span></div>
+        <div class="dr"><span class="dl">低流動性資産（アクティブ）</span><span class="dv">¥40万円</span></div>
+      </div>
     </div>
-    <div class="notice notice-warn">
-      <span style="font-size:16px;">⚠️</span>
-      <div>外貨資産（USD＋EUR＋暗号資産）が資産全体の49%を占めています。円高局面では資産価値の目減りに注意が必要です。</div>
-    </div>
-  </div>
-
-  <!-- ── Account ── -->
-  <div id="at-account" style="display:none;">
-    <div class="card">
-      <div class="card-title">口座別配分</div>
-      <div class="asset-row">
-        <div class="asset-left"><div style="width:36px;height:36px;background:#EBF0FB;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">🏦</div><div><div class="asset-name">特定口座（証券A社）</div><div class="asset-sub">株式・投資信託</div></div></div>
-        <div class="asset-amount"><div>4,980万円</div><div class="asset-pct">40%</div></div>
-      </div>
-      <div class="asset-row">
-        <div class="asset-left"><div style="width:36px;height:36px;background:#F0FFF4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">📗</div><div><div class="asset-name">NISA口座</div><div class="asset-sub">積立NISA・成長投資枠</div></div></div>
-        <div class="asset-amount"><div>1,494万円</div><div class="asset-pct">12%</div></div>
-      </div>
-      <div class="asset-row">
-        <div class="asset-left"><div style="width:36px;height:36px;background:#FFFAF0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">💼</div><div><div class="asset-name">iDeCo</div><div class="asset-sub">確定拠出年金</div></div></div>
-        <div class="asset-amount"><div>622万円</div><div class="asset-pct">5%</div></div>
-      </div>
-      <div class="asset-row">
-        <div class="asset-left"><div style="width:36px;height:36px;background:#FFF5F5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">₿</div><div><div class="asset-name">暗号資産取引所</div><div class="asset-sub">BTC, ETH</div></div></div>
-        <div class="asset-amount"><div>996万円</div><div class="asset-pct">8%</div></div>
-      </div>
-      <div class="asset-row">
-        <div class="asset-left"><div style="width:36px;height:36px;background:#EBF0FB;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">🏠</div><div><div class="asset-name">収益不動産</div><div class="asset-sub">東京都内 区分マンション</div></div></div>
-        <div class="asset-amount"><div>1,245万円</div><div class="asset-pct">10%</div></div>
-      </div>
-      <div class="asset-row">
-        <div class="asset-left"><div style="width:36px;height:36px;background:#F7F8FC;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">💴</div><div><div class="asset-name">普通・定期預金</div><div class="asset-sub">都市銀行2行</div></div></div>
-        <div class="asset-amount"><div>2,241万円</div><div class="asset-pct">18%</div></div>
-      </div>
-      <div class="asset-row">
-        <div class="asset-left"><div style="width:36px;height:36px;background:#F0FFF4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">📋</div><div><div class="asset-name">その他（債券・金など）</div><div class="asset-sub">国債・ゴールドETF</div></div></div>
-        <div class="asset-amount"><div>872万円</div><div class="asset-pct">7%</div></div>
-      </div>
+    <div class="notice">
+      <span style="font-size:15px">💡</span>
+      <div>緊急時に必要な生活費の目安は3〜6ヶ月分。現在の流動性の高い資産は¥525万円で、月35万円の生活費換算で約15ヶ月分に相当します。十分な水準です。</div>
     </div>
   </div>
 </section>
 
-<!-- ░░░ 3. RISK ░░░ -->
+<!-- ░░░ RISK ░░░ -->
 <section class="screen" id="s-risk">
-  <div class="page-header">
-    <h1 class="page-title">リスク分析</h1>
-    <p class="page-subtitle">資産全体のリスク水準と下落シナリオ</p>
-  </div>
+  <div class="ph"><div><h1 class="pt">リスク分析</h1><p class="ps">ポートフォリオ全体のリスク水準とVaR</p></div></div>
 
-  <!-- Risk level card -->
   <div class="card mb24">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
       <div>
         <div class="card-title">総合リスク水準</div>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
-          <span class="badge med" style="font-size:16px;padding:7px 20px;">中リスク</span>
-          <span style="font-size:13px;color:var(--text-muted);">5段階中 3</span>
+        <div style="display:flex;align-items:center;gap:11px;margin-top:7px">
+          <span class="badge med" style="font-size:15px;padding:6px 18px">中リスク</span>
+          <span style="font-size:12.5px;color:var(--muted)">5段階中 3</span>
         </div>
       </div>
-      <div style="text-align:right;">
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">リスクスコア</div>
-        <div style="font-size:38px;font-weight:700;color:var(--warning);">52<span style="font-size:16px;font-weight:400;color:var(--text-muted);">/100</span></div>
+      <div style="text-align:right">
+        <div style="font-size:11.5px;color:var(--muted);margin-bottom:3px">年率ボラティリティ（推計）</div>
+        <div style="font-size:36px;font-weight:700;color:var(--warn)">18.4<span style="font-size:15px;font-weight:400;color:var(--muted)">%</span></div>
       </div>
     </div>
     <div class="mt16">
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:6px;">
-        <span>低リスク</span><span>中リスク</span><span>高リスク</span>
-      </div>
-      <div class="gauge-bar">
-        <div class="gauge-pin" style="left:52%;"></div>
-      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-bottom:5px"><span>低リスク</span><span>中リスク</span><span>高リスク</span></div>
+      <div class="gauge-wrap"><div class="gauge-pin" style="left:46%"></div></div>
     </div>
   </div>
 
-  <!-- 3 Scenarios -->
-  <div class="grid-3 mb24">
-    <div class="card">
-      <div class="card-title">通常時の想定下落</div>
-      <div style="font-size:28px;font-weight:700;color:var(--positive);margin:8px 0;">– 120万円</div>
-      <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">95%の確率でこの範囲内に収まると想定されます（VaR 95%）</p>
+  <!-- VaR Slider -->
+  <div class="card mb24">
+    <div class="card-title">🎚️ リスク許容度シミュレーター（VaR）</div>
+    <p style="font-size:12.5px;color:var(--muted);margin-bottom:16px;line-height:1.6">スライダーを動かして、リスク許容度を変えたときの期待損失額（VaR）と期待収益の変化を確認できます。VaRはパラメトリック法（正規分布仮定）で算出しています。</p>
+    <div class="var-wrap">
+      <div class="var-hd">
+        <span class="var-title">リスク許容度</span>
+        <span class="var-lv med" id="var-label">バランス型（現在）</span>
+      </div>
+      <input type="range" class="var-slider" min="0" max="2" step="1" value="1" oninput="updateVaR(this.value)" id="var-slider">
+      <div class="var-labels"><span>保守的</span><span>バランス型</span><span>積極的</span></div>
     </div>
-    <div class="card">
-      <div class="card-title">厳しい相場での下落</div>
-      <div style="font-size:28px;font-weight:700;color:var(--warning);margin:8px 0;">– 260万円</div>
-      <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">リーマンショック級の相場急落時のシナリオです</p>
+    <div class="vg3">
+      <div class="vc">
+        <div class="vc-l">VaR（95%、1ヶ月）</div>
+        <div class="vc-v" id="var-95" style="color:var(--warn)">–¥106万円</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px">月次最大損失の目安</div>
+      </div>
+      <div class="vc">
+        <div class="vc-l">期待収益（年率）</div>
+        <div class="vc-v" id="var-ret" style="color:var(--pos)">+10.8%</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px">¥<span id="var-ret-amt">128</span>万円/年</div>
+      </div>
+      <div class="vc">
+        <div class="vc-l">年率ボラティリティ</div>
+        <div class="vc-v" id="var-vol" style="color:var(--text)">18.4%</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:4px">ポートフォリオ標準偏差</div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-title">過去最大ドローダウン</div>
-      <div style="font-size:28px;font-weight:700;color:var(--negative);margin:8px 0;">– 18.4%</div>
-      <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">推計ポートフォリオの過去最大下落幅</p>
+    <div class="card-title mt16 mb12">リスク水準別 推奨アロケーション変更</div>
+    <table class="arec">
+      <thead><tr><th>資産クラス</th><th>現在配分</th><th class="r">推奨配分</th><th class="r">変化</th></tr></thead>
+      <tbody id="var-alloc-table"><!-- JS --></tbody>
+    </table>
+    <div class="notice mt16" style="font-size:11.5px">
+      <span>ℹ️</span>
+      <div>計算前提：各資産クラスのボラティリティ（現預金0.1%、投資信託15%、暗号資産現物75%、アクティブ運用90%）と想定相関係数を使用したパラメトリックVaRです。将来の損失を保証するものではありません。</div>
     </div>
   </div>
 
-  <!-- Risk factors + metrics -->
-  <div class="grid-2 mb24">
+  <div class="g2 mb24">
     <div class="card">
       <div class="card-title">リスク要因の評価</div>
-      <div class="asset-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
-        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
-          <span style="font-size:14px;">資産の偏り（集中リスク）</span>
-          <span class="badge med">やや高</span>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);line-height:1.5;">株式・投信が資産全体の52%を占めています</p>
+      <div class="ar" style="flex-direction:column;align-items:flex-start;gap:5px">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center"><span style="font-size:13px">暗号資産リスク</span><span class="badge high">高い</span></div>
+        <p style="font-size:11.5px;color:var(--muted);line-height:1.5">BTCは年率75%以上のボラティリティ。ポートフォリオの22%を占めています</p>
       </div>
-      <div class="asset-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
-        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
-          <span style="font-size:14px;">通貨リスク（為替）</span>
-          <span class="badge med">中程度</span>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);line-height:1.5;">外貨資産が49%。円高1%で約60万円の評価減</p>
+      <div class="ar" style="flex-direction:column;align-items:flex-start;gap:5px">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center"><span style="font-size:13px">集中リスク（投資信託偏重）</span><span class="badge med">中程度</span></div>
+        <p style="font-size:11.5px;color:var(--muted);line-height:1.5">投資信託が52%と主要比率。全世界・S&P500で地域分散は取れています</p>
       </div>
-      <div class="asset-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
-        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
-          <span style="font-size:14px;">暗号資産リスク</span>
-          <span class="badge high">高い</span>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);line-height:1.5;">BTC/ETHは50%以上の下落リスクがあります（8%保有）</p>
+      <div class="ar" style="flex-direction:column;align-items:flex-start;gap:5px">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center"><span style="font-size:13px">為替リスク</span><span class="badge med">中程度</span></div>
+        <p style="font-size:11.5px;color:var(--muted);line-height:1.5">USD建て資産を含む外貨エクスポージャーあり。円高局面で注意</p>
       </div>
-      <div class="asset-row" style="flex-direction:column;align-items:flex-start;gap:6px;border-bottom:none;">
-        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
-          <span style="font-size:14px;">流動性リスク</span>
-          <span class="badge low">低い</span>
-        </div>
-        <p style="font-size:12px;color:var(--text-muted);line-height:1.5;">すぐ使える現金が22%あり、緊急時も対応可能です</p>
+      <div class="ar" style="flex-direction:column;align-items:flex-start;gap:5px;border-bottom:none">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center"><span style="font-size:13px">流動性リスク</span><span class="badge low">低い</span></div>
+        <p style="font-size:11.5px;color:var(--muted);line-height:1.5">流動性の高い資産が44.5%。緊急時の換金も対応可能</p>
       </div>
     </div>
     <div class="card">
-      <div class="card-title">詳細リスク指標（VaR / CVaR）</div>
-      <div class="detail-box mt12">
-        <div class="detail-row"><span class="detail-label">VaR（95%、1ヶ月）</span><span class="detail-value" style="color:var(--warning);">–120万円</span></div>
-        <div class="detail-row"><span class="detail-label">VaR（99%、1ヶ月）</span><span class="detail-value" style="color:var(--warning);">–196万円</span></div>
-        <div class="detail-row"><span class="detail-label">CVaR（期待損失額）</span><span class="detail-value" style="color:var(--negative);">–260万円</span></div>
-        <div class="detail-row"><span class="detail-label">年率ボラティリティ</span><span class="detail-value">12.4%</span></div>
-        <div class="detail-row"><span class="detail-label">シャープレシオ（推計）</span><span class="detail-value" style="color:var(--positive);">0.82</span></div>
-        <div class="detail-row"><span class="detail-label">最大ドローダウン（推計）</span><span class="detail-value" style="color:var(--negative);">–18.4%</span></div>
-      </div>
-      <div class="notice mt16" style="font-size:12px;">
-        <span>ℹ️</span>
-        <div>これらの数値は過去データおよびモデルに基づく推計値です。将来の損失を保証するものではありません。</div>
+      <div class="card-title">詳細リスク指標</div>
+      <div class="dbox mt12">
+        <div class="dr"><span class="dl">VaR（95%、1ヶ月）</span><span class="dv" style="color:var(--warn)">–¥106万円</span></div>
+        <div class="dr"><span class="dl">VaR（99%、1ヶ月）</span><span class="dv" style="color:var(--warn)">–¥150万円</span></div>
+        <div class="dr"><span class="dl">CVaR（期待損失・99%）</span><span class="dv" style="color:var(--neg)">–¥198万円</span></div>
+        <div class="dr"><span class="dl">年率ボラティリティ</span><span class="dv">18.4%</span></div>
+        <div class="dr"><span class="dl">シャープレシオ（推計）</span><span class="dv" style="color:var(--pos)">0.74</span></div>
+        <div class="dr"><span class="dl">最大ドローダウン（推計）</span><span class="dv" style="color:var(--neg)">–22.1%</span></div>
       </div>
     </div>
   </div>
 
-  <!-- Risk bar chart -->
   <div class="card">
-    <div class="card-title">下落シナリオ別 影響額イメージ</div>
-    <div style="height:200px;margin-top:12px;">
-      <canvas id="riskChart"></canvas>
-    </div>
+    <div class="card-title">下落シナリオ別 影響額</div>
+    <div style="height:190px;margin-top:10px"><canvas id="riskChart"></canvas></div>
   </div>
 </section>
 
-<!-- ░░░ 4. INCOME ░░░ -->
-<section class="screen" id="s-income">
-  <div class="page-header">
-    <h1 class="page-title">収益見通し</h1>
-    <p class="page-subtitle">配当・利息・家賃などの収益予測</p>
+<!-- ░░░ P&L 損益推移 ░░░ -->
+<section class="screen" id="s-pnl">
+  <div class="member-sw">
+    <button class="mbtn active" onclick="setMemberPnl('self',this)"><div class="mavt">本</div>本人</button>
+    <button class="mbtn" onclick="setMemberPnl('spouse',this)"><div class="mavt">妻</div>妻</button>
+    <button class="mbtn" onclick="setMemberPnl('household',this)"><div class="mavt">家</div>世帯合算</button>
   </div>
+  <div class="ph"><div><h1 class="pt">損益推移</h1><p class="ps">保有資産の含み損益と時系列変化</p></div></div>
 
-  <div class="grid-2 mb24">
-    <div class="stat-card" style="background:linear-gradient(135deg,#F0FFF4,#fff);">
-      <div class="stat-label">今月の予想収益</div>
-      <div class="stat-value pos xl">+ 18.4万円</div>
-      <div class="stat-change up mt8">前月比 +2.1万円（+12.9%）</div>
+  <div class="g3 mb24">
+    <div class="stat">
+      <div class="sl">取得総額</div>
+      <div class="sv" id="pnl-cost">¥984万円</div>
     </div>
-    <div class="stat-card" style="background:linear-gradient(135deg,#EBF0FB,#fff);">
-      <div class="stat-label">年間の予想収益（標準シナリオ）</div>
-      <div class="stat-value pri xl">+ 235万円</div>
-      <div class="stat-change muted mt8">純資産比 約2.4%</div>
+    <div class="stat">
+      <div class="sl">現在評価額</div>
+      <div class="sv" id="pnl-value">¥1,181万円</div>
     </div>
-  </div>
-
-  <div class="grid-2 mb24">
-    <div class="card">
-      <div class="card-title">収益源の内訳（月次）</div>
-      <div class="income-row">
-        <div class="income-left">
-          <div class="income-icon" style="background:#EBF0FB;">📈</div>
-          <div><div class="income-name">配当収入</div><div class="income-sub">国内・海外株式</div></div>
-        </div>
-        <div class="income-right"><div class="income-monthly">6.2万円/月</div><div class="income-annual">74.4万円/年</div></div>
-      </div>
-      <div class="income-row">
-        <div class="income-left">
-          <div class="income-icon" style="background:#F0FFF4;">🏠</div>
-          <div><div class="income-name">家賃収入</div><div class="income-sub">収益不動産</div></div>
-        </div>
-        <div class="income-right"><div class="income-monthly">8.0万円/月</div><div class="income-annual">96.0万円/年</div></div>
-      </div>
-      <div class="income-row">
-        <div class="income-left">
-          <div class="income-icon" style="background:#FFFAF0;">💰</div>
-          <div><div class="income-name">利息・利払</div><div class="income-sub">預金・債券</div></div>
-        </div>
-        <div class="income-right"><div class="income-monthly">2.3万円/月</div><div class="income-annual">27.6万円/年</div></div>
-      </div>
-      <div class="income-row">
-        <div class="income-left">
-          <div class="income-icon" style="background:#F5F0FF;">₿</div>
-          <div><div class="income-name">ステーキング報酬</div><div class="income-sub">ETH PoS</div></div>
-        </div>
-        <div class="income-right"><div class="income-monthly">1.9万円/月</div><div class="income-annual">22.8万円/年</div></div>
-      </div>
-      <div class="income-row" style="border-bottom:none;">
-        <div class="income-left">
-          <div class="income-icon" style="background:#F7F8FC;">📊</div>
-          <div><div class="income-name">想定運用益</div><div class="income-sub">投資信託・ETF</div></div>
-        </div>
-        <div class="income-right"><div class="income-monthly" style="color:var(--text-muted);">（見込み）</div><div class="income-annual">114.2万円/年</div></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">収益源の割合（年間）</div>
-      <div style="height:220px;">
-        <canvas id="incomeChart"></canvas>
-      </div>
-      <div class="legend mt12">
-        <div class="legend-item"><div class="legend-dot" style="background:#5B7FD4;"></div>配当</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#68D391;"></div>家賃</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#F6AD55;"></div>利息</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#B794F4;"></div>ステーキング</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#CBD5E0;"></div>運用益</div>
-      </div>
+    <div class="stat">
+      <div class="sl">含み損益</div>
+      <div class="sv pos" id="pnl-gain">＋¥197万円</div>
+      <div class="sc up" id="pnl-rate">＋20.0%</div>
     </div>
   </div>
 
-  <!-- Projection -->
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-      <div class="card-title" style="margin-bottom:0;">将来の資産推移シミュレーション</div>
-      <div class="scenario-btns">
-        <button class="sc-btn active-bull" onclick="scBtn(this,'bull')">強気</button>
-        <button class="sc-btn active-base" onclick="scBtn(this,'base')">標準</button>
-        <button class="sc-btn" onclick="scBtn(this,'bear')">保守的</button>
-      </div>
-    </div>
-    <div style="height:280px;">
-      <canvas id="projChart"></canvas>
-    </div>
-    <div class="metric-grid mt16">
-      <div class="metric-item">
-        <div class="metric-label">5年後（強気）</div>
-        <div class="metric-value" style="color:var(--positive);">1.61億円</div>
-      </div>
-      <div class="metric-item">
-        <div class="metric-label">5年後（標準）</div>
-        <div class="metric-value" style="color:var(--primary);">1.45億円</div>
-      </div>
-      <div class="metric-item">
-        <div class="metric-label">5年後（保守的）</div>
-        <div class="metric-value" style="color:var(--text-muted);">1.28億円</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ░░░ 5. REBALANCE ░░░ -->
-<section class="screen" id="s-rebalance">
-  <div class="page-header">
-    <h1 class="page-title">リバランス提案</h1>
-    <p class="page-subtitle">目標配分に近づけるための調整案</p>
-  </div>
-
-  <div class="ai-card mb24">
-    <div class="ai-header"><span class="ai-label">提案</span><span class="ai-title">今月のリバランス推奨アクション</span></div>
-    <p class="ai-text">株式の比率が目標を4ポイント上回っています。暗号資産も目標より3ポイント高めです。一方、現金比率が目標を下回っており、緊急時の備えをやや厚めにしておくことをおすすめします。<br>大幅な売買は不要で、次回の積立や定期的な入金タイミングに合わせて段階的に調整するのがおすすめです。</p>
-  </div>
-
-  <!-- Bar chart -->
   <div class="card mb24">
-    <div class="card-title">現在配分 vs 目標配分</div>
-    <div style="height:300px;margin-top:12px;">
-      <canvas id="rbChart"></canvas>
-    </div>
+    <div class="card-title">ポートフォリオ評価額推移（過去12ヶ月）</div>
+    <div style="height:260px;margin-top:10px"><canvas id="pnlChart"></canvas></div>
   </div>
 
-  <!-- Table -->
-  <div class="card mb24" style="overflow-x:auto;">
-    <div class="card-title">資産クラス別 詳細比較</div>
-    <table class="rb-table mt12">
+  <div class="card" style="overflow-x:auto">
+    <div class="card-title">銘柄別 損益一覧</div>
+    <table class="ptable mt12" id="pnl-table">
       <thead>
         <tr>
+          <th>銘柄名</th>
           <th>資産クラス</th>
-          <th class="c">現在</th>
-          <th class="c">目標</th>
-          <th class="c">差分</th>
-          <th class="c">おおよその金額</th>
+          <th class="r">取得額</th>
+          <th class="r">評価額</th>
+          <th class="r">含み損益</th>
+          <th class="r">損益率</th>
         </tr>
       </thead>
+      <tbody id="pnl-tbody"><!-- JS --></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ░░░ INCOME 収益見通し（運用益のみ）░░░ -->
+<section class="screen" id="s-income">
+  <div class="ph"><div><h1 class="pt">収益見通し</h1><p class="ps">運用益（配当・ステーキング・キャピタルゲイン）のみを対象とした収益予測</p></div></div>
+
+  <div class="notice mb20">
+    <span>📌</span>
+    <div>このページでは<strong>運用益のみ</strong>を表示します。労働収入・家賃収入・事業収入は含みません。</div>
+  </div>
+
+  <div class="g2 mb24">
+    <div class="stat" style="background:linear-gradient(135deg,#F0FFF4,#fff)">
+      <div class="sl">今年の予想運用益（標準）</div>
+      <div class="sv pos" style="font-size:28px">＋¥128万円</div>
+      <div class="sc up mt8">総資産比 約10.8%</div>
+    </div>
+    <div class="stat" style="background:linear-gradient(135deg,#EBF0FB,#fff)">
+      <div class="sl">月あたり平均期待収益</div>
+      <div class="sv pri" style="font-size:28px">＋¥10.7万円</div>
+      <div class="sc mu mt8">複利込みの年率換算</div>
+    </div>
+  </div>
+
+  <div class="g2 mb24">
+    <div class="card">
+      <div class="card-title">運用益の内訳（年間・標準シナリオ）</div>
+      <div class="ar">
+        <div class="ar-l"><div style="width:32px;height:32px;background:#EBF0FB;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px">📈</div><div><div class="an">投資信託 期待運用益</div><div class="as">eMAXIS Slim 等 年率7%想定</div></div></div>
+        <div style="text-align:right"><div style="font-weight:700;font-size:13px">¥43.1万円/年</div><div style="font-size:11px;color:var(--muted)">¥3.6万円/月</div></div>
+      </div>
+      <div class="ar">
+        <div class="ar-l"><div style="width:32px;height:32px;background:#FFF8E7;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px">₿</div><div><div class="an">暗号資産 期待運用益</div><div class="as">現物 年率30%・アクティブ40%想定</div></div></div>
+        <div style="text-align:right"><div style="font-weight:700;font-size:13px">¥83.5万円/年</div><div style="font-size:11px;color:var(--muted)">¥7.0万円/月</div></div>
+      </div>
+      <div class="ar">
+        <div class="ar-l"><div style="width:32px;height:32px;background:#F0FFF4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px">💴</div><div><div class="an">現預金 利息</div><div class="as">年率0.1%想定</div></div></div>
+        <div style="text-align:right"><div style="font-weight:700;font-size:13px">¥0.3万円/年</div><div style="font-size:11px;color:var(--muted)">¥0.02万円/月</div></div>
+      </div>
+      <div class="ar" style="border-bottom:none">
+        <div class="ar-l"><div style="width:32px;height:32px;background:#FAF5FF;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px">⛓️</div><div><div class="an">DeFi・ステーキング報酬</div><div class="as">未登録（将来拡張）</div></div></div>
+        <div style="text-align:right"><div style="font-weight:700;font-size:13px;color:var(--muted)">未登録</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">収益源の割合（年間）</div>
+      <div style="height:210px"><canvas id="incomeChart"></canvas></div>
+      <div class="legend mt12">
+        <div class="li"><div class="ld" style="background:#5B7FD4"></div>投資信託</div>
+        <div class="li"><div class="ld" style="background:#F6A623"></div>暗号資産</div>
+        <div class="li"><div class="ld" style="background:#A0AEC0"></div>現預金</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:11px;margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:0">資産推移シミュレーション（運用益のみ）</div>
+      <div class="sc-btns">
+        <button class="sc-btn bull" onclick="scBtn(this,'bull')">強気(+15%)</button>
+        <button class="sc-btn base" onclick="scBtn(this,'base')">標準(+10%)</button>
+        <button class="sc-btn" onclick="scBtn(this,'bear')">保守的(+5%)</button>
+      </div>
+    </div>
+    <div style="height:260px"><canvas id="projChart"></canvas></div>
+    <div class="mg mt16">
+      <div class="mi"><div class="ml">5年後（強気）</div><div class="mv" style="color:var(--pos)">¥2,381万</div></div>
+      <div class="mi"><div class="ml">5年後（標準）</div><div class="mv" style="color:var(--primary)">¥1,901万</div></div>
+      <div class="mi"><div class="ml">5年後（保守的）</div><div class="mv" style="color:var(--muted)">¥1,506万</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░░ REBALANCE ░░░ -->
+<section class="screen" id="s-rebalance">
+  <div class="ph"><div><h1 class="pt">リバランス提案</h1><p class="ps">目標配分に近づけるための調整案</p></div></div>
+  <div class="ai-card mb24">
+    <div class="ai-hd"><span class="ai-lb">提案</span><span class="ai-tl">今月のリバランス推奨アクション</span></div>
+    <p class="ai-tx">暗号資産（現物）が19%と目標の15%を超えています。BTCの一部を利確し、投資信託または現預金への移行を検討してください。SOL（アクティブ運用）は–20%の含み損のため、損切りラインの設定も有効です。投資信託の比率は目標内で適切です。</p>
+  </div>
+  <div class="card mb24">
+    <div class="card-title">現在配分 vs 目標配分</div>
+    <div style="height:280px;margin-top:10px"><canvas id="rbChart"></canvas></div>
+  </div>
+  <div class="card mb24" style="overflow-x:auto">
+    <div class="card-title">資産クラス別 詳細比較</div>
+    <table class="rbt mt12">
+      <thead><tr><th>資産クラス</th><th class="c">現在</th><th class="c">目標</th><th class="c">差分</th><th class="c">目安金額</th></tr></thead>
       <tbody>
-        <tr>
-          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#A0AEC0;"></div>現金</div></td>
-          <td class="c" style="font-weight:600;">18%</td><td class="c">22%</td>
-          <td class="c"><span class="badge low">–4%</span></td>
-          <td class="c" style="color:var(--positive);">+498万円 増やす</td>
-        </tr>
-        <tr>
-          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#5B7FD4;"></div>株式</div></td>
-          <td class="c" style="font-weight:600;">32%</td><td class="c">28%</td>
-          <td class="c"><span class="badge high">+4%</span></td>
-          <td class="c" style="color:var(--negative);">–498万円 減らす</td>
-        </tr>
-        <tr>
-          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#68D391;"></div>投資信託/ETF</div></td>
-          <td class="c" style="font-weight:600;">20%</td><td class="c">20%</td>
-          <td class="c"><span class="badge ok">±0%</span></td>
-          <td class="c" style="color:var(--text-muted);">変更なし</td>
-        </tr>
-        <tr>
-          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#F6AD55;"></div>債券</div></td>
-          <td class="c" style="font-weight:600;">10%</td><td class="c">12%</td>
-          <td class="c"><span class="badge low">–2%</span></td>
-          <td class="c" style="color:var(--positive);">+249万円 増やす</td>
-        </tr>
-        <tr>
-          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#B794F4;"></div>暗号資産</div></td>
-          <td class="c" style="font-weight:600;">8%</td><td class="c">5%</td>
-          <td class="c"><span class="badge high">+3%</span></td>
-          <td class="c" style="color:var(--negative);">–374万円 減らす</td>
-        </tr>
-        <tr>
-          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#FC8181;"></div>不動産</div></td>
-          <td class="c" style="font-weight:600;">10%</td><td class="c">10%</td>
-          <td class="c"><span class="badge ok">±0%</span></td>
-          <td class="c" style="color:var(--text-muted);">変更なし</td>
-        </tr>
-        <tr>
-          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#CBD5E0;"></div>その他</div></td>
-          <td class="c" style="font-weight:600;">2%</td><td class="c">3%</td>
-          <td class="c"><span class="badge low">–1%</span></td>
-          <td class="c" style="color:var(--positive);">+124万円 増やす</td>
-        </tr>
+        <tr><td><div style="display:flex;align-items:center;gap:7px"><div class="dot" style="background:#A0AEC0"></div>現預金</div></td><td class="c" style="font-weight:600">25.4%</td><td class="c">25%</td><td class="c"><span class="badge ok">±0%</span></td><td class="c" style="color:var(--muted)">変更なし</td></tr>
+        <tr><td><div style="display:flex;align-items:center;gap:7px"><div class="dot" style="background:#68D391"></div>投資信託/ETF</div></td><td class="c" style="font-weight:600">52.1%</td><td class="c">55%</td><td class="c"><span class="badge low">–3%</span></td><td class="c" style="color:var(--pos)">+¥35万円 増やす</td></tr>
+        <tr><td><div style="display:flex;align-items:center;gap:7px"><div class="dot" style="background:#F6A623"></div>暗号資産（現物）</div></td><td class="c" style="font-weight:600">19.1%</td><td class="c">15%</td><td class="c"><span class="badge high">+4%</span></td><td class="c" style="color:var(--neg)">–¥48万円 減らす</td></tr>
+        <tr><td><div style="display:flex;align-items:center;gap:7px"><div class="dot" style="background:#FC8181"></div>暗号資産（アクティブ）</div></td><td class="c" style="font-weight:600">3.4%</td><td class="c">5%</td><td class="c"><span class="badge low">–2%</span></td><td class="c" style="color:var(--pos)">+¥23万円 増やす（任意）</td></tr>
       </tbody>
     </table>
   </div>
-
-  <!-- Suggestions -->
   <div class="card">
     <div class="card-title">優先アクション</div>
-    <div class="suggestion">
-      <div class="pri-badge pri-h">優</div>
-      <div>
-        <div class="sug-text">株式の比率がやや高めです。国内株の利益確定を検討しましょう。</div>
-        <div class="sug-action">推奨：株式を約498万円分 → 現金または債券へ</div>
-      </div>
-    </div>
-    <div class="suggestion">
-      <div class="pri-badge pri-h">優</div>
-      <div>
-        <div class="sug-text">暗号資産の比率を少し下げると、全体の変動を抑えやすくなります。</div>
-        <div class="sug-action">推奨：BTC/ETHを374万円分 → 一部利確して現金へ</div>
-      </div>
-    </div>
-    <div class="suggestion">
-      <div class="pri-badge pri-m">中</div>
-      <div>
-        <div class="sug-text">現金比率が少なめです。緊急の備えとして積み上げておくと安心です。</div>
-        <div class="sug-action">推奨：次回のボーナスや入金は一時的に現金として保持</div>
-      </div>
-    </div>
-    <div class="suggestion">
-      <div class="pri-badge pri-l">低</div>
-      <div>
-        <div class="sug-text">外貨資産への偏りがあります。円高転換時に注意が必要です。</div>
-        <div class="sug-action">為替ヘッジ付きファンドへの一部移行も選択肢です</div>
-      </div>
-    </div>
+    <div class="sugg"><div class="pb-b pb-h">優</div><div><div class="st">暗号資産（BTC）の一部を利確し、投資信託枠を拡大しましょう。</div><div class="sa">推奨：BTC ¥48万円分 → eMAXIS Slim 全世界株式へ</div></div></div>
+    <div class="sugg"><div class="pb-b pb-m">中</div><div><div class="st">SOL（アクティブ運用）の損切りラインを検討してください。</div><div class="sa">現在–20%（–¥10万円）。損切りラインは–25%が目安</div></div></div>
+    <div class="sugg"><div class="pb-b pb-l">低</div><div><div class="st">つみたてNISA枠で投資信託の積立増額を検討。</div><div class="sa">年間¥120万円（月¥10万円）まで非課税で積立可能</div></div></div>
   </div>
 </section>
 
 </main>
 
 <!-- ── Mobile Bottom Nav ── -->
-<nav class="bottom-nav">
-  <div class="bnav-inner">
-    <div class="bnav-item active"  onclick="go('home',this,true)">      <span class="nav-icon">🏠</span><span>ホーム</span></div>
-    <div class="bnav-item"         onclick="go('alloc',this,true)">     <span class="nav-icon">📊</span><span>配分</span></div>
-    <div class="bnav-item"         onclick="go('risk',this,true)">      <span class="nav-icon">🛡️</span><span>リスク</span></div>
-    <div class="bnav-item"         onclick="go('income',this,true)">    <span class="nav-icon">📈</span><span>収益</span></div>
-    <div class="bnav-item"         onclick="go('rebalance',this,true)"> <span class="nav-icon">⚖️</span><span>提案</span></div>
+<nav class="bn">
+  <div class="bni">
+    <div class="bni-it active" onclick="go('home',this,true)"><span class="nav-icon">🏠</span><span>ホーム</span></div>
+    <div class="bni-it" onclick="go('holdings',this,true)"><span class="nav-icon">📂</span><span>保有</span></div>
+    <div class="bni-it" onclick="go('alloc',this,true)"><span class="nav-icon">📊</span><span>配分</span></div>
+    <div class="bni-it" onclick="go('risk',this,true)"><span class="nav-icon">🛡️</span><span>リスク</span></div>
+    <div class="bni-it" onclick="go('pnl',this,true)"><span class="nav-icon">📈</span><span>損益</span></div>
   </div>
 </nav>
 
 <script>
-// ── Navigation ──
-const SCREENS = ['home','alloc','risk','income','rebalance'];
+// ══════════════════════════════════
+// DATA
+// ══════════════════════════════════
+const DEMO = {
+  self: {
+    name:'本人', initial:'本',
+    total:9120000, cost:7830000, pnl:1290000, rate:16.5,
+    institutions:[
+      { id:'sbi', name:'SBI証券', type:'securities', icon:'🏦',
+        total:4070000, cost:3500000, pnl:570000,
+        holdings:[
+          {name:'eMAXIS Slim 全世界株式（AC）', cls:'fund', tag:'tag-fund', label:'投資信託', qty:100, unit:'口', avg:20000, price:23000, value:2300000, cost:2000000, pnl:300000, rate:15.0},
+          {name:'eMAXIS Slim 米国株式（S&P500）', cls:'fund', tag:'tag-fund', label:'投資信託', qty:100, unit:'口', avg:15000, price:17700, value:1770000, cost:1500000, pnl:270000, rate:18.0}
+        ]},
+      { id:'binance', name:'Binance', type:'crypto', icon:'₿',
+        total:2050000, cost:1330000, pnl:720000,
+        holdings:[
+          {name:'Bitcoin (BTC)', cls:'crypto_spot', tag:'tag-cs', label:'暗号資産（現物）', qty:0.1, unit:'BTC', avg:4500000, price:12000000, value:1200000, cost:450000, pnl:750000, rate:166.7},
+          {name:'Ethereum (ETH)', cls:'crypto_spot', tag:'tag-cs', label:'暗号資産（現物）', qty:1, unit:'ETH', avg:380000, price:450000, value:450000, cost:380000, pnl:70000, rate:18.4},
+          {name:'Solana (SOL)', cls:'crypto_active', tag:'tag-ca', label:'アクティブ運用', qty:20, unit:'SOL', avg:25000, price:20000, value:400000, cost:500000, pnl:-100000, rate:-20.0}
+        ]},
+      { id:'sbi_bank', name:'住信SBIネット銀行', type:'bank', icon:'💴',
+        total:3000000, cost:3000000, pnl:0,
+        holdings:[
+          {name:'普通預金', cls:'cash', tag:'tag-cash', label:'現預金', qty:1, unit:'円', avg:3000000, price:3000000, value:3000000, cost:3000000, pnl:0, rate:0.0}
+        ]}
+    ]
+  },
+  spouse: {
+    name:'妻', initial:'妻',
+    total:2686000, cost:2010000, pnl:676000, rate:33.6,
+    institutions:[
+      { id:'rakuten', name:'楽天証券', type:'securities', icon:'📗',
+        total:2086000, cost:1800000, pnl:286000,
+        holdings:[
+          {name:'eMAXIS Slim 全世界株式（AC）', cls:'fund', tag:'tag-fund', label:'投資信託', qty:80, unit:'口', avg:12500, price:14375, value:1150000, cost:1000000, pnl:150000, rate:15.0},
+          {name:'楽天・全米株式インデックス', cls:'fund', tag:'tag-fund', label:'投資信託', qty:60, unit:'口', avg:13333, price:15600, value:936000, cost:800000, pnl:136000, rate:17.0}
+        ]},
+      { id:'bitflyer', name:'bitFlyer', type:'crypto', icon:'🔶',
+        total:600000, cost:210000, pnl:390000,
+        holdings:[
+          {name:'Bitcoin (BTC)', cls:'crypto_spot', tag:'tag-cs', label:'暗号資産（現物）', qty:0.05, unit:'BTC', avg:4200000, price:12000000, value:600000, cost:210000, pnl:390000, rate:185.7}
+        ]}
+    ]
+  }
+};
+
+// ── State ──
+let currentMember = 'household';
+
+function getMemberData(m) {
+  if (m === 'self') return DEMO.self;
+  if (m === 'spouse') return DEMO.spouse;
+  // household: merge
+  const s = DEMO.self, p = DEMO.spouse;
+  const instMap = {};
+  [...s.institutions, ...p.institutions].forEach(inst => {
+    const key = inst.id + '_' + (inst === s.institutions.find(i=>i.id===inst.id) ? 'self' : 'spouse');
+    instMap[key] = {...inst, _owner: inst === s.institutions.find(i=>i.id===inst.id) ? '本人' : '妻'};
+  });
+  return {
+    name:'世帯', initial:'家',
+    total: s.total + p.total,
+    cost:  s.cost  + p.cost,
+    pnl:   s.pnl   + p.pnl,
+    rate:  ((s.pnl + p.pnl) / (s.cost + p.cost) * 100).toFixed(1),
+    institutions: [
+      ...s.institutions.map(i=>({...i,_owner:'本人'})),
+      ...p.institutions.map(i=>({...i,_owner:'妻'}))
+    ]
+  };
+}
+
+function getAllocData(m) {
+  const d = getMemberData(m);
+  const map = {};
+  d.institutions.forEach(inst => inst.holdings.forEach(h => {
+    map[h.cls] = (map[h.cls]||0) + h.value;
+  }));
+  const total = Object.values(map).reduce((a,b)=>a+b,0);
+  return Object.entries(map).map(([cls,val])=>({cls, val, pct: val/total*100}));
+}
+
+// ── Formatters ──
+const Y = n => '¥'+(Math.abs(n)>=10000? (Math.abs(n)/10000).toFixed(1)+'万' : Math.abs(n).toLocaleString());
+const YF = n => (n>=0?'＋':'-')+Y(n);
+const PCT = n => (n>=0?'＋':'')+n.toFixed(1)+'%';
+
+// ══════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════
+const SCREENS = ['home','holdings','register','alloc','risk','pnl','income','rebalance'];
 
 function go(name, el, mobile=false) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('s-' + name).classList.add('active');
+  document.getElementById('s-'+name).classList.add('active');
   const idx = SCREENS.indexOf(name);
-
   if (mobile) {
-    document.querySelectorAll('.bnav-item').forEach((n,i) => n.classList.toggle('active', i===idx));
-    document.querySelectorAll('.sidebar .nav-item').forEach((n,i) => n.classList.toggle('active', i===idx));
+    document.querySelectorAll('.bni-it').forEach((n,i)=>n.classList.toggle('active',i===idx&&idx<5));
+    document.querySelectorAll('.sidebar .nav-item').forEach((n,i)=>n.classList.toggle('active',i===idx));
   } else {
-    document.querySelectorAll('.sidebar .nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.sidebar .nav-item').forEach(n=>n.classList.remove('active'));
     el.classList.add('active');
-    document.querySelectorAll('.bnav-item').forEach((n,i) => n.classList.toggle('active', i===idx));
+    document.querySelectorAll('.bni-it').forEach((n,i)=>n.classList.toggle('active',i===idx&&idx<5));
   }
   window.scrollTo(0,0);
 }
 
-// ── Sub-tabs (allocation) ──
-function allocTab(tab, el) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+// ══════════════════════════════════
+// MEMBER SWITCHER
+// ══════════════════════════════════
+function setMember(m, el) {
+  currentMember = m;
+  el.closest('.member-sw').querySelectorAll('.mbtn').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
-  ['asset','currency','account'].forEach(t => {
-    document.getElementById('at-'+t).style.display = t===tab ? 'block' : 'none';
-  });
+  updateHome();
+  updateSidebarUser();
+}
+function setMemberHoldings(m,el) { currentMember=m; el.closest('.member-sw').querySelectorAll('.mbtn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); renderHoldings(m); }
+function setMemberAlloc(m,el) { currentMember=m; el.closest('.member-sw').querySelectorAll('.mbtn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); renderAlloc(m); }
+function setMemberPnl(m,el) { currentMember=m; el.closest('.member-sw').querySelectorAll('.mbtn').forEach(b=>b.classList.remove('active')); el.classList.add('active'); renderPnl(m); }
+
+function updateSidebarUser() {
+  const d = getMemberData(currentMember);
+  document.getElementById('sb-avatar').textContent = d.initial;
+  document.getElementById('sb-name').textContent = d.name + 'の資産';
+  document.getElementById('mb-avatar-top').textContent = d.initial;
 }
 
-// ── Scenario buttons ──
-function scBtn(el, type) {
-  document.querySelectorAll('.sc-btn').forEach(b => b.className = 'sc-btn');
-  el.className = 'sc-btn active-' + type;
-}
-
-// ── Charts ──
-Chart.defaults.font.family = "'Noto Sans JP', sans-serif";
-const C = ['#A0AEC0','#5B7FD4','#68D391','#F6AD55','#B794F4','#FC8181','#CBD5E0'];
-
-const DONUT_OPTS = {
-  cutout:'68%',
-  plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } } },
-  animation:{ duration:700 }
+// ══════════════════════════════════
+// HOME
+// ══════════════════════════════════
+const CLASS_COLORS = {
+  cash:'#A0AEC0', stock:'#5B7FD4', fund:'#68D391', bond:'#F6AD55',
+  crypto_spot:'#F6A623', crypto_active:'#FC8181', defi:'#B794F4', other:'#CBD5E0'
+};
+const CLASS_LABELS = {
+  cash:'現預金', stock:'株式', fund:'投資信託/ETF', bond:'債券',
+  crypto_spot:'暗号資産（現物）', crypto_active:'暗号資産（アクティブ）', defi:'DeFi', other:'その他'
 };
 
-// Home donut
-new Chart('homeChart',{
-  type:'doughnut',
-  data:{ labels:['現金','株式','投資信託/ETF','債券','暗号資産','不動産','その他'], datasets:[{ data:[18,32,20,10,8,10,2], backgroundColor:C, borderWidth:2, borderColor:'#fff' }] },
-  options:{ ...DONUT_OPTS }
-});
+let homeChartInst = null;
 
-// Alloc donut
-new Chart('allocChart',{
-  type:'doughnut',
-  data:{ labels:['現金','株式','投資信託/ETF','債券','暗号資産','不動産','その他'], datasets:[{ data:[18,32,20,10,8,10,2], backgroundColor:C, borderWidth:2, borderColor:'#fff' }] },
-  options:{ cutout:'62%', plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } } }, animation:{ duration:700 } }
-});
+function updateHome() {
+  const d = getMemberData(currentMember);
+  document.getElementById('home-total').textContent = '¥'+Math.round(d.total/10000)+'万円';
+  document.getElementById('home-cost').textContent = '取得総額 ¥'+Math.round(d.cost/10000)+'万円';
+  document.getElementById('home-pnl').textContent = YF(d.pnl)+'円';
+  document.getElementById('home-rate').textContent = PCT(+d.rate);
+  document.getElementById('h-stat-total').textContent = '¥'+Math.round(d.total/10000)+'万';
+  document.getElementById('h-stat-pnl').textContent = '▲ '+Y(d.pnl)+' 含み益';
+  document.getElementById('h-stat-pnl2').textContent = YF(d.pnl)+'円';
+  document.getElementById('h-stat-rate').textContent = PCT(+d.rate);
 
-// Currency donut
-new Chart('currChart',{
-  type:'doughnut',
-  data:{ labels:['JPY','USD','BTC/ETH','EUR','その他'], datasets:[{ data:[48,35,8,6,3], backgroundColor:['#5B7FD4','#68D391','#B794F4','#F6AD55','#CBD5E0'], borderWidth:2, borderColor:'#fff' }] },
-  options:{ cutout:'60%', plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } } }, animation:{ duration:700 } }
-});
+  // liquidity
+  const alloc = getAllocData(currentMember);
+  const total = alloc.reduce((s,a)=>s+a.val,0);
+  const highLiq = alloc.filter(a=>a.cls==='cash'||a.cls==='crypto_spot').reduce((s,a)=>s+a.val,0);
+  const liqPct = (highLiq/total*100).toFixed(1);
+  document.getElementById('h-stat-liq').textContent = liqPct+'%';
+  document.getElementById('h-stat-liq2').textContent = '¥'+Math.round(highLiq/10000)+'万円相当';
 
-// Risk horizontal bar
+  // mini donut
+  const labels = alloc.map(a=>CLASS_LABELS[a.cls]||a.cls);
+  const vals   = alloc.map(a=>Math.round(a.pct*10)/10);
+  const colors = alloc.map(a=>CLASS_COLORS[a.cls]||'#CBD5E0');
+  if (homeChartInst) homeChartInst.destroy();
+  homeChartInst = new Chart('homeChart',{
+    type:'doughnut',
+    data:{labels, datasets:[{data:vals, backgroundColor:colors, borderWidth:2, borderColor:'#fff'}]},
+    options:{cutout:'68%', plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}%`}}}, animation:{duration:500}}
+  });
+
+  // alloc list
+  const list = document.getElementById('home-alloc-list');
+  list.innerHTML = alloc.map(a=>`
+    <div class="ar">
+      <div class="ar-l"><div class="dot" style="background:${CLASS_COLORS[a.cls]||'#ccc'}"></div><span class="an">${CLASS_LABELS[a.cls]||a.cls}</span></div>
+      <span style="font-weight:600;font-size:12.5px">${a.pct.toFixed(1)}%</span>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════
+// HOLDINGS ACCORDION
+// ══════════════════════════════════
+function renderHoldings(m) {
+  const d = getMemberData(m);
+  document.getElementById('holdings-subtitle').textContent = d.name+'の金融機関別ポジション一覧';
+  const container = document.getElementById('holdings-list');
+  container.innerHTML = d.institutions.map((inst,i)=>{
+    const pnlCls = inst.pnl >= 0 ? 'pos' : 'neg';
+    const pnlStr = (inst.pnl>=0?'＋':'')+Y(inst.pnl)+'円';
+    const ownerTag = inst._owner ? `<span style="font-size:10px;background:#EBF0FB;color:var(--primary);padding:1px 7px;border-radius:4px;margin-left:6px">${inst._owner}</span>` : '';
+    return `
+    <div class="inst">
+      <div class="inst-hd" onclick="toggleInst('acc-${i}')">
+        <div class="inst-info">
+          <div class="inst-ic ${inst.type}">${inst.icon}</div>
+          <div>
+            <div class="inst-nm">${inst.name}${ownerTag}</div>
+            <div class="inst-typ">${inst.type==='securities'?'証券会社':inst.type==='crypto'?'暗号資産取引所':'銀行'}</div>
+          </div>
+        </div>
+        <div class="inst-right">
+          <div class="inst-sum">
+            <div class="inst-tot">¥${Math.round(inst.total/10000)}万円</div>
+            <div class="inst-pnl ${pnlCls}">${pnlStr} (${inst.pnl>=0?'+':''}${((inst.pnl/inst.cost)*100).toFixed(1)}%)</div>
+          </div>
+          <div class="chev" id="chev-${i}">▼</div>
+        </div>
+      </div>
+      <div class="inst-bd" id="acc-${i}">
+        <table class="htable">
+          <thead><tr><th>銘柄名</th><th>クラス</th><th class="r">保有数量</th><th class="r">取得単価</th><th class="r">現在価格</th><th class="r">評価額</th><th class="r">含み損益</th><th class="r">損益率</th></tr></thead>
+          <tbody>${inst.holdings.map(h=>`
+            <tr>
+              <td>${h.name}</td>
+              <td><span class="ctag ${h.tag}">${h.label}</span></td>
+              <td class="r">${h.qty.toLocaleString()} ${h.unit}</td>
+              <td class="r">¥${h.avg.toLocaleString()}</td>
+              <td class="r">¥${h.price.toLocaleString()}</td>
+              <td class="r">¥${Math.round(h.value/10000)}万円</td>
+              <td class="r ${h.pnl>=0?'pp':'pn'}">${h.pnl>=0?'＋':'-'}¥${Math.round(Math.abs(h.pnl)/10000*10)/10}万円</td>
+              <td class="r ${h.pnl>=0?'pp':'pn'}">${h.rate>=0?'+':''}${h.rate}%</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleInst(id) {
+  const bd = document.getElementById(id);
+  const idx = id.replace('acc-','');
+  const chev = document.getElementById('chev-'+idx);
+  bd.classList.toggle('open');
+  chev.classList.toggle('open');
+}
+
+// ══════════════════════════════════
+// ALLOCATION
+// ══════════════════════════════════
+let allocChartInst = null;
+
+function renderAlloc(m) {
+  const alloc = getAllocData(m);
+  const d = getMemberData(m);
+  document.getElementById('alloc-subtitle').textContent = '総資産 ¥'+Math.round(d.total/10000)+'万円 の内訳';
+
+  const labels = alloc.map(a=>CLASS_LABELS[a.cls]||a.cls);
+  const vals   = alloc.map(a=>Math.round(a.pct*10)/10);
+  const colors = alloc.map(a=>CLASS_COLORS[a.cls]||'#CBD5E0');
+
+  if (allocChartInst) allocChartInst.destroy();
+  allocChartInst = new Chart('allocChart',{
+    type:'doughnut',
+    data:{labels, datasets:[{data:vals, backgroundColor:colors, borderWidth:2, borderColor:'#fff'}]},
+    options:{cutout:'62%', plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed}%`}}}, animation:{duration:500}}
+  });
+
+  document.getElementById('alloc-legend').innerHTML = alloc.map(a=>`<div class="li"><div class="ld" style="background:${CLASS_COLORS[a.cls]||'#ccc'}"></div>${CLASS_LABELS[a.cls]||a.cls}</div>`).join('');
+  document.getElementById('alloc-list').innerHTML = alloc.map(a=>`
+    <div class="ar">
+      <div class="ar-l"><div class="dot" style="background:${CLASS_COLORS[a.cls]||'#ccc'}"></div><div><div class="an">${CLASS_LABELS[a.cls]||a.cls}</div></div></div>
+      <div class="aa"><div>¥${Math.round(a.val/10000)}万円</div><div class="ap">${a.pct.toFixed(1)}%</div></div>
+    </div>`).join('');
+
+  // liquidity tab
+  const total = alloc.reduce((s,a)=>s+a.val,0);
+  const high = alloc.filter(a=>a.cls==='cash'||a.cls==='crypto_spot').reduce((s,a)=>s+a.val,0);
+  const mid  = alloc.filter(a=>a.cls==='fund'||a.cls==='stock'||a.cls==='bond').reduce((s,a)=>s+a.val,0);
+  const low  = alloc.filter(a=>a.cls==='crypto_active'||a.cls==='defi').reduce((s,a)=>s+a.val,0);
+  const hp=(high/total*100).toFixed(1), mp=(mid/total*100).toFixed(1), lp=(low/total*100).toFixed(1);
+  document.getElementById('liq-high-pct').textContent=hp+'%';
+  document.getElementById('liq-mid-pct').textContent=mp+'%';
+  document.getElementById('liq-low-pct').textContent=lp+'%';
+  document.getElementById('liq-high-bar').style.width=hp+'%';
+  document.getElementById('liq-mid-bar').style.width=mp+'%';
+  document.getElementById('liq-low-bar').style.width=lp+'%';
+  document.getElementById('liq-high-amt').textContent='¥'+Math.round(high/10000)+'万円';
+}
+
+function allocTab(tab, el) {
+  document.querySelectorAll('#s-alloc .tb').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  ['asset','crypto','liquidity'].forEach(t=>document.getElementById('at-'+t).style.display=t===tab?'block':'none');
+}
+
+// ══════════════════════════════════
+// P&L
+// ══════════════════════════════════
+let pnlChartInst = null;
+
+function renderPnl(m) {
+  const d = getMemberData(m);
+  document.getElementById('pnl-cost').textContent = '¥'+Math.round(d.cost/10000)+'万円';
+  document.getElementById('pnl-value').textContent = '¥'+Math.round(d.total/10000)+'万円';
+  document.getElementById('pnl-gain').textContent = YF(d.pnl)+'円';
+  document.getElementById('pnl-rate').textContent = PCT(+d.rate);
+
+  // 12-month history
+  const base = d.total;
+  const months = ['4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月','4月'];
+  const returns = [-0.21,-0.013,0.032,0.018,-0.005,0.029,0.041,-0.021,0.053,0.012,-0.008,0.034,0.021];
+  let v = base;
+  const series = [base];
+  for (let i=0;i<12;i++) {
+    v = series[series.length-1];
+    // go backwards from current
+  }
+  // build forward from 12 months ago
+  let start = base;
+  for (let r of [...returns].reverse().slice(1)) start = start/(1+r);
+  const vals = [Math.round(start)];
+  for (let r of returns.slice(0,-1)) vals.push(Math.round(vals[vals.length-1]*(1+r)));
+  vals.push(base);
+
+  if (pnlChartInst) pnlChartInst.destroy();
+  pnlChartInst = new Chart('pnlChart',{
+    type:'line',
+    data:{labels:months, datasets:[{
+      label:'評価額', data:vals.map(v=>Math.round(v/10000)),
+      borderColor:'#5B7FD4', backgroundColor:'rgba(91,127,212,.08)',
+      fill:true, tension:0.4, borderWidth:2.5, pointRadius:3
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ¥${ctx.parsed.y}万円`}}},
+      scales:{
+        y:{ticks:{callback:v=>`¥${v}万`}, grid:{color:'#F5F5F5'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+
+  // P&L table
+  const all = d.institutions.flatMap(inst=>inst.holdings.map(h=>({...h, inst:inst.name, owner:inst._owner||''})));
+  document.getElementById('pnl-tbody').innerHTML = all.map(h=>`
+    <tr>
+      <td><div style="font-weight:500">${h.name}</div><div style="font-size:11px;color:var(--muted)">${h.inst}${h.owner?' ('+h.owner+')':''}</div></td>
+      <td><span class="ctag ${h.tag}">${h.label}</span></td>
+      <td class="r">¥${Math.round(h.cost/10000)}万円</td>
+      <td class="r">¥${Math.round(h.value/10000)}万円</td>
+      <td class="r ${h.pnl>=0?'pp':'pn'}">${h.pnl>=0?'＋':'-'}¥${Math.round(Math.abs(h.pnl)/10000*10)/10}万円</td>
+      <td class="r ${h.pnl>=0?'pp':'pn'}">${h.rate>=0?'+':''}${h.rate}%</td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════
+// VaR SLIDER
+// ══════════════════════════════════
+const VAR_PROFILES = [
+  { label:'保守的', labelCls:'low',
+    allocs:{cash:0.40, fund:0.50, crypto_spot:0.05, crypto_active:0.01, defi:0, other:0.04},
+    vol:0.102, var95:58, ret:6.7, retAmt:79 },
+  { label:'バランス型（現在）', labelCls:'med',
+    allocs:{cash:0.254, fund:0.521, crypto_spot:0.191, crypto_active:0.034, defi:0, other:0},
+    vol:0.184, var95:106, ret:10.8, retAmt:128 },
+  { label:'積極的', labelCls:'high',
+    allocs:{cash:0.10, fund:0.35, crypto_spot:0.35, crypto_active:0.15, defi:0.05, other:0},
+    vol:0.301, var95:172, ret:19.3, retAmt:228 }
+];
+
+const CURRENT_ALLOCS = {cash:25.4, fund:52.1, crypto_spot:19.1, crypto_active:3.4, defi:0, other:0};
+
+function updateVaR(val) {
+  const p = VAR_PROFILES[val];
+  const lbl = document.getElementById('var-label');
+  lbl.textContent = p.label;
+  lbl.className = 'var-lv '+p.labelCls;
+  document.getElementById('var-95').textContent = '–¥'+p.var95+'万円';
+  document.getElementById('var-95').style.color = p.labelCls==='low'?'var(--pos)':p.labelCls==='high'?'var(--neg)':'var(--warn)';
+  document.getElementById('var-ret').textContent = '+'+p.ret.toFixed(1)+'%';
+  document.getElementById('var-ret-amt').textContent = p.retAmt;
+  document.getElementById('var-vol').textContent = (p.vol*100).toFixed(1)+'%';
+
+  const rows = [
+    {cls:'現預金', cur:CURRENT_ALLOCS.cash, rec:Math.round(p.allocs.cash*100)},
+    {cls:'投資信託/ETF', cur:CURRENT_ALLOCS.fund, rec:Math.round(p.allocs.fund*100)},
+    {cls:'暗号資産（現物）', cur:CURRENT_ALLOCS.crypto_spot, rec:Math.round(p.allocs.crypto_spot*100)},
+    {cls:'暗号資産（アクティブ）', cur:CURRENT_ALLOCS.crypto_active, rec:Math.round(p.allocs.crypto_active*100)},
+    {cls:'DeFi', cur:0, rec:Math.round(p.allocs.defi*100)},
+  ];
+  document.getElementById('var-alloc-table').innerHTML = rows.map(r=>{
+    const diff = r.rec - r.cur;
+    const arrow = diff>1? `<span class="arr up">▲ +${diff.toFixed(0)}%</span>` : diff<-1? `<span class="arr dn">▼ ${diff.toFixed(0)}%</span>` : `<span class="arr eq">–</span>`;
+    return `<tr><td>${r.cls}</td><td>${r.cur.toFixed(1)}%</td><td class="r">${r.rec}%</td><td class="r">${arrow}</td></tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════
+// FORM
+// ══════════════════════════════════
+function toggleActiveField() {
+  const cls = document.getElementById('f-class').value;
+  document.getElementById('f-defi-row').style.display = cls==='defi' ? 'block' : 'none';
+}
+
+function clearForm() {
+  ['f-member','f-inst','f-class','f-defi','f-name','f-symbol','f-qty','f-unit','f-price','f-note'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value=el.tagName==='SELECT'?'':'';
+  });
+  document.getElementById('f-date').value='2026-04-21';
+  document.getElementById('form-ok').classList.remove('show');
+  document.getElementById('f-defi-row').style.display='none';
+}
+
+async function submitForm() {
+  const member  = document.getElementById('f-member').value;
+  const inst    = document.getElementById('f-inst').value;
+  const cls     = document.getElementById('f-class').value;
+  const name    = document.getElementById('f-name').value.trim();
+  const qty     = parseFloat(document.getElementById('f-qty').value);
+  const price   = parseFloat(document.getElementById('f-price').value);
+  if (!inst||!cls||!name||!qty||!price) { alert('必須項目をすべて入力してください'); return; }
+
+  const entry = {
+    member, institution:inst, asset_class:cls, name,
+    symbol: document.getElementById('f-symbol').value.trim(),
+    qty, unit: document.getElementById('f-unit').value.trim()||'口',
+    avg_cost: price, total_cost: qty*price,
+    date: document.getElementById('f-date').value,
+    note: document.getElementById('f-note').value.trim(),
+    created_at: new Date().toISOString()
+  };
+
+  // Try Supabase, fallback to localStorage
+  const sbUrl = localStorage.getItem('sb_url');
+  const sbKey = localStorage.getItem('sb_key');
+  if (sbUrl && sbKey && window.supabase) {
+    try {
+      const client = window.supabase.createClient(sbUrl, sbKey);
+      const {error} = await client.from('holdings').insert([entry]);
+      if (error) throw error;
+    } catch(e) {
+      console.warn('Supabase error, falling back to localStorage:', e);
+      saveToLocal(entry);
+    }
+  } else {
+    saveToLocal(entry);
+  }
+
+  document.getElementById('form-ok').classList.add('show');
+  setTimeout(()=>document.getElementById('form-ok').classList.remove('show'), 4000);
+}
+
+function saveToLocal(entry) {
+  const existing = JSON.parse(localStorage.getItem('my_assets_holdings')||'[]');
+  existing.push(entry);
+  localStorage.setItem('my_assets_holdings', JSON.stringify(existing));
+}
+
+function saveSupabaseConfig() {
+  const url = document.getElementById('sb-url').value.trim();
+  const key = document.getElementById('sb-key').value.trim();
+  if (!url||!key) { alert('URLとKeyを入力してください'); return; }
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  document.getElementById('db-status').textContent = 'Supabase接続設定を保存しました。次回から自動接続されます。';
+  alert('保存しました！接続テストは資産を1件登録してご確認ください。');
+}
+
+// ══════════════════════════════════
+// CHARTS
+// ══════════════════════════════════
+Chart.defaults.font.family = "'Noto Sans JP', sans-serif";
+Chart.defaults.font.size = 12;
+
+// Risk chart
 new Chart('riskChart',{
   type:'bar',
   data:{
-    labels:['通常時（VaR 95%）','厳しい相場（CVaR）','最大ドローダウン相当'],
+    labels:['通常時 VaR(95%)','厳しい相場 CVaR','過去最大DD相当'],
     datasets:[{
-      data:[-120,-260,-1774],
-      backgroundColor:['rgba(72,187,120,0.72)','rgba(237,137,54,0.72)','rgba(252,129,129,0.72)'],
+      data:[-106,-198,-2182],
+      backgroundColor:['rgba(72,187,120,.7)','rgba(237,137,54,.7)','rgba(252,129,129,.7)'],
       borderColor:['#48BB78','#ED8936','#FC8181'],
-      borderWidth:1.5, borderRadius:6,
+      borderWidth:1.5, borderRadius:5
     }]
   },
   options:{
     indexAxis:'y', responsive:true, maintainAspectRatio:false,
-    plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` 約 ${Math.abs(ctx.parsed.x).toLocaleString()}万円の下落` } } },
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>` 約 ${Math.abs(ctx.parsed.x).toLocaleString()}万円の下落`}}},
     scales:{
-      x:{ ticks:{ callback: v => v===0?'0':`–${Math.abs(v)}万円` }, grid:{ color:'#F5F5F5' } },
-      y:{ grid:{ display:false } }
+      x:{ticks:{callback:v=>v===0?'0':'-'+Math.abs(v)+'万'}, grid:{color:'#F5F5F5'}},
+      y:{grid:{display:false}}
     }
   }
 });
@@ -1072,50 +1355,80 @@ new Chart('riskChart',{
 // Income donut
 new Chart('incomeChart',{
   type:'doughnut',
-  data:{ labels:['配当','家賃','利息','ステーキング','運用益'], datasets:[{ data:[74,96,28,23,114], backgroundColor:['#5B7FD4','#68D391','#F6AD55','#B794F4','#CBD5E0'], borderWidth:2, borderColor:'#fff' }] },
-  options:{ cutout:'60%', plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}万円/年` } } }, animation:{ duration:700 }, responsive:true, maintainAspectRatio:false }
+  data:{labels:['投資信託','暗号資産','現預金'],datasets:[{data:[43,83,0.3],backgroundColor:['#5B7FD4','#F6A623','#A0AEC0'],borderWidth:2,borderColor:'#fff'}]},
+  options:{cutout:'60%',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ¥${ctx.parsed.toFixed(1)}万円/年`}}},animation:{duration:500}}
 });
 
-// Projection line chart
-new Chart('projChart',{
+// Projection chart
+let projChartInst = new Chart('projChart',{
   type:'line',
   data:{
     labels:['2026','2027','2028','2029','2030','2031'],
     datasets:[
-      { label:'強気', data:[9650,10480,11380,12350,13410,16100], borderColor:'#48BB78', backgroundColor:'rgba(72,187,120,0.07)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 },
-      { label:'標準', data:[9650,10200,10780,11390,12040,14500], borderColor:'#5B7FD4', backgroundColor:'rgba(91,127,212,0.07)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:4 },
-      { label:'保守的', data:[9650,9980,10320,10670,11030,12800], borderColor:'#A0AEC0', backgroundColor:'rgba(160,174,192,0.05)', fill:true, tension:0.4, borderWidth:1.5, borderDash:[5,3], pointRadius:4 },
+      {label:'強気(+15%)',data:[1181,1358,1562,1796,2065,2381],borderColor:'#48BB78',backgroundColor:'rgba(72,187,120,.07)',fill:true,tension:0.4,borderWidth:2,pointRadius:4},
+      {label:'標準(+10%)',data:[1181,1299,1429,1572,1729,1901],borderColor:'#5B7FD4',backgroundColor:'rgba(91,127,212,.07)',fill:true,tension:0.4,borderWidth:2.5,pointRadius:4},
+      {label:'保守的(+5%)',data:[1181,1240,1302,1367,1435,1506],borderColor:'#A0AEC0',backgroundColor:'rgba(160,174,192,.05)',fill:true,tension:0.4,borderWidth:1.5,borderDash:[5,3],pointRadius:4},
     ]
   },
   options:{
-    responsive:true, maintainAspectRatio:false,
-    interaction:{ mode:'index', intersect:false },
-    plugins:{ legend:{ position:'top', labels:{ font:{size:12}, boxWidth:12, padding:16 } }, tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}万円` } } },
-    scales:{
-      y:{ ticks:{ callback: v => v>=10000?`${(v/10000).toFixed(1)}億円`:`${v}万円` }, grid:{ color:'#F5F5F5' } },
-      x:{ grid:{ display:false } }
-    }
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{font:{size:11.5},boxWidth:11,padding:14}},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ¥${ctx.parsed.y}万円`}}},
+    scales:{y:{ticks:{callback:v=>`¥${v}万`},grid:{color:'#F5F5F5'}},x:{grid:{display:false}}}
   }
 });
+
+function scBtn(el,type) {
+  document.querySelectorAll('.sc-btn').forEach(b=>b.className='sc-btn');
+  el.className='sc-btn '+type;
+}
 
 // Rebalance grouped bar
 new Chart('rbChart',{
   type:'bar',
   data:{
-    labels:['現金','株式','投信/ETF','債券','暗号資産','不動産','その他'],
+    labels:['現預金','投資信託/ETF','暗号資産（現物）','暗号資産（アクティブ）'],
     datasets:[
-      { label:'現在', data:[18,32,20,10,8,10,2], backgroundColor:'rgba(91,127,212,0.75)', borderColor:'#5B7FD4', borderWidth:1, borderRadius:4 },
-      { label:'目標', data:[22,28,20,12,5,10,3], backgroundColor:'rgba(72,187,120,0.55)', borderColor:'#48BB78', borderWidth:1, borderRadius:4 },
+      {label:'現在',data:[25.4,52.1,19.1,3.4],backgroundColor:'rgba(91,127,212,.75)',borderColor:'#5B7FD4',borderWidth:1,borderRadius:4},
+      {label:'目標',data:[25,55,15,5],backgroundColor:'rgba(72,187,120,.55)',borderColor:'#48BB78',borderWidth:1,borderRadius:4},
     ]
   },
   options:{
-    responsive:true, maintainAspectRatio:false,
-    plugins:{ legend:{ position:'top', labels:{ font:{size:12}, boxWidth:12, padding:16 } }, tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}%` } } },
-    scales:{
-      y:{ max:40, ticks:{ callback: v => v+'%' }, grid:{ color:'#F5F5F5' } },
-      x:{ grid:{ display:false } }
-    }
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top',labels:{font:{size:11.5},boxWidth:11,padding:14}},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y}%`}}},
+    scales:{y:{max:65,ticks:{callback:v=>v+'%'},grid:{color:'#F5F5F5'}},x:{grid:{display:false}}}
   }
+});
+
+// ══════════════════════════════════
+// INIT
+// ══════════════════════════════════
+// Load saved Supabase config
+const savedUrl = localStorage.getItem('sb_url');
+const savedKey = localStorage.getItem('sb_key');
+if (savedUrl) document.getElementById('sb-url').value = savedUrl;
+if (savedKey) document.getElementById('sb-key').value = savedKey;
+if (savedUrl && savedKey) {
+  document.getElementById('db-status').textContent = 'Supabase接続設定済み。データはクラウドに保存されます。';
+}
+
+// Initial render
+updateHome();
+updateSidebarUser();
+renderHoldings('household');
+renderAlloc('household');
+renderPnl('household');
+updateVaR(1);
+
+// default holdings to household
+document.querySelectorAll('#s-holdings .member-sw .mbtn').forEach((b,i)=>{
+  b.classList.toggle('active',i===2);
+});
+document.querySelectorAll('#s-alloc .member-sw .mbtn').forEach((b,i)=>{
+  b.classList.toggle('active',i===2);
+});
+document.querySelectorAll('#s-pnl .member-sw .mbtn').forEach((b,i)=>{
+  b.classList.toggle('active',i===2);
 });
 </script>
 </body>
