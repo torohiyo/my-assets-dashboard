@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Assets — 資産管理ダッシュボード</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #F7F8FC;
+      --surface: #FFFFFF;
+      --primary: #5B7FD4;
+      --primary-light: #EBF0FB;
+      --positive: #48BB78;
+      --positive-light: #F0FFF4;
+      --negative: #FC8181;
+      --negative-light: #FFF5F5;
+      --warning: #ED8936;
+      --warning-light: #FFFAF0;
+      --text: #2D3748;
+      --text-muted: #718096;
+      --text-light: #A0AEC0;
+      --border: #E2E8F0;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --sidebar-width: 224px;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── Layout ─── */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      position: fixed; top:0; left:0; height:100vh;
+      z-index: 100;
+      display: flex; flex-direction: column;
+      padding: 24px 16px;
+    }
+
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 32px; padding: 0 8px;
+    }
+    .logo-icon {
+      width:36px; height:36px;
+      background: var(--primary); border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      color:white; font-size:16px; font-weight:700; flex-shrink:0;
+    }
+    .logo-text { font-size:16px; font-weight:700; letter-spacing:-0.3px; }
+    .logo-sub  { font-size:10px; color:var(--text-muted); }
+
+    .nav-item {
+      display:flex; align-items:center; gap:12px;
+      padding:11px 12px; border-radius:var(--radius-sm);
+      cursor:pointer; color:var(--text-muted); font-size:14px; font-weight:500;
+      transition:all 0.18s; margin-bottom:4px; user-select:none;
+    }
+    .nav-item:hover { background:var(--bg); color:var(--text); }
+    .nav-item.active { background:var(--primary-light); color:var(--primary); }
+    .nav-icon { font-size:18px; width:24px; text-align:center; flex-shrink:0; }
+
+    .sidebar-user {
+      display:flex; align-items:center; gap:10px;
+      padding:12px; background:var(--bg); border-radius:var(--radius-sm);
+      margin-top:auto;
+    }
+    .user-avatar {
+      width:36px; height:36px; background:var(--primary); border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      color:white; font-size:14px; font-weight:600; flex-shrink:0;
+    }
+    .user-name  { font-size:13px; font-weight:600; }
+    .user-plan  { font-size:11px; color:var(--text-muted); }
+
+    .main-content {
+      margin-left: var(--sidebar-width);
+      padding: 32px 36px;
+      min-height: 100vh;
+    }
+
+    /* ─── Screens ─── */
+    .screen { display:none; }
+    .screen.active { display:block; }
+
+    .page-header { margin-bottom:28px; }
+    .page-title  { font-size:22px; font-weight:700; letter-spacing:-0.3px; }
+    .page-subtitle { font-size:13px; color:var(--text-muted); margin-top:4px; }
+
+    /* ─── Cards ─── */
+    .card {
+      background:var(--surface); border-radius:var(--radius);
+      padding:24px; box-shadow:var(--shadow);
+    }
+    .card-title {
+      font-size:11px; font-weight:700; color:var(--text-muted);
+      text-transform:uppercase; letter-spacing:0.8px; margin-bottom:14px;
+    }
+
+    /* ─── Grids ─── */
+    .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    .grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:20px; }
+
+    /* ─── Stat cards ─── */
+    .stat-card {
+      background:var(--surface); border-radius:var(--radius);
+      padding:20px 24px; box-shadow:var(--shadow);
+    }
+    .stat-label { font-size:12px; color:var(--text-muted); font-weight:500; margin-bottom:8px; }
+    .stat-value { font-size:24px; font-weight:700; letter-spacing:-0.5px; }
+    .stat-value.xl   { font-size:32px; }
+    .stat-value.pos  { color:var(--positive); }
+    .stat-value.pri  { color:var(--primary); }
+    .stat-change { font-size:12px; margin-top:5px; display:flex; align-items:center; gap:4px; }
+    .stat-change.up  { color:var(--positive); }
+    .stat-change.muted { color:var(--text-muted); }
+
+    /* ─── Hero ─── */
+    .home-hero {
+      background:linear-gradient(135deg,#4E72CC 0%,#7B9EE8 100%);
+      border-radius:var(--radius); padding:28px 32px; color:white;
+      display:flex; justify-content:space-between; align-items:center;
+      margin-bottom:20px;
+    }
+    .hero-label { font-size:13px; opacity:0.8; margin-bottom:6px; }
+    .hero-value { font-size:42px; font-weight:700; letter-spacing:-1.5px; line-height:1; }
+    .hero-sub   { font-size:13px; opacity:0.7; margin-top:8px; }
+    .hero-right { text-align:right; }
+    .hero-mini  { margin-bottom:10px; }
+    .hero-mini-label { font-size:11px; opacity:0.72; }
+    .hero-mini-value { font-size:20px; font-weight:700; }
+
+    /* ─── Risk badges ─── */
+    .badge {
+      display:inline-flex; align-items:center;
+      padding:3px 12px; border-radius:20px;
+      font-size:12px; font-weight:600;
+    }
+    .badge.med  { background:var(--warning-light); color:var(--warning); }
+    .badge.low  { background:var(--positive-light); color:var(--positive); }
+    .badge.high { background:var(--negative-light); color:var(--negative); }
+    .badge.ok   { background:var(--bg); color:var(--text-muted); }
+
+    /* ─── AI comment ─── */
+    .ai-card {
+      background:linear-gradient(135deg,#EBF0FB 0%,#F0FFF4 100%);
+      border-radius:var(--radius); padding:20px 24px;
+      border-left:4px solid var(--primary);
+    }
+    .ai-header { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+    .ai-label  {
+      background:var(--primary); color:white;
+      font-size:10px; font-weight:700; padding:2px 8px;
+      border-radius:4px; letter-spacing:0.5px;
+    }
+    .ai-title  { font-size:13px; font-weight:600; color:var(--primary); }
+    .ai-text   { font-size:14px; line-height:1.75; color:var(--text); }
+
+    /* ─── Notice banner ─── */
+    .notice {
+      background:var(--primary-light); border-radius:var(--radius-sm);
+      padding:13px 16px; display:flex; align-items:flex-start; gap:10px;
+      font-size:13px; color:var(--primary); line-height:1.6;
+    }
+    .notice-warn { background:var(--warning-light); color:var(--warning); }
+
+    /* ─── Asset rows ─── */
+    .asset-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:12px 0; border-bottom:1px solid var(--border);
+    }
+    .asset-row:last-child { border-bottom:none; }
+    .asset-left { display:flex; align-items:center; gap:10px; }
+    .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .asset-name { font-size:14px; font-weight:500; }
+    .asset-sub  { font-size:11px; color:var(--text-muted); margin-top:1px; }
+    .asset-amount { font-size:14px; font-weight:600; text-align:right; }
+    .asset-pct  { font-size:12px; color:var(--text-muted); }
+
+    /* ─── Progress bars ─── */
+    .pb-wrap   { margin-bottom:12px; }
+    .pb-label  { display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; }
+    .pb-track  { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+    .pb-fill   { height:100%; border-radius:4px; transition:width 0.6s ease; }
+
+    /* ─── Allocation layout ─── */
+    .alloc-flex { display:flex; gap:32px; align-items:center; flex-wrap:wrap; }
+    .alloc-chart-wrap { flex:0 0 200px; }
+    .alloc-list { flex:1; min-width:180px; }
+
+    /* ─── Legend ─── */
+    .legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:16px; }
+    .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); }
+    .legend-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+    /* ─── Risk gauge bar ─── */
+    .gauge-bar {
+      height:12px;
+      background:linear-gradient(to right,#68D391,#F6AD55,#FC8181);
+      border-radius:6px; position:relative; margin-top:6px;
+    }
+    .gauge-pin {
+      position:absolute; top:50%; transform:translate(-50%,-50%);
+      width:20px; height:20px; background:white;
+      border:3px solid var(--warning); border-radius:50%;
+      box-shadow:var(--shadow-md);
+    }
+
+    /* ─── Detail box ─── */
+    .detail-box { background:var(--bg); border-radius:var(--radius-sm); padding:16px; }
+    .detail-row {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:8px 0; border-bottom:1px solid var(--border); font-size:13px;
+    }
+    .detail-row:last-child { border-bottom:none; }
+    .detail-label { color:var(--text-muted); }
+    .detail-value { font-weight:600; }
+
+    /* ─── Metric grid ─── */
+    .metric-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+    .metric-item { background:var(--bg); border-radius:var(--radius-sm); padding:14px 16px; }
+    .metric-label { font-size:11px; color:var(--text-muted); font-weight:500; margin-bottom:4px; }
+    .metric-value { font-size:18px; font-weight:700; }
+
+    /* ─── Income sources ─── */
+    .income-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:11px 0; border-bottom:1px solid var(--border);
+    }
+    .income-row:last-child { border-bottom:none; }
+    .income-left { display:flex; align-items:center; gap:12px; }
+    .income-icon {
+      width:34px; height:34px; border-radius:8px;
+      display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;
+    }
+    .income-name { font-size:14px; font-weight:500; }
+    .income-sub  { font-size:11px; color:var(--text-muted); margin-top:1px; }
+    .income-right { text-align:right; }
+    .income-monthly { font-weight:700; font-size:14px; }
+    .income-annual  { font-size:11px; color:var(--text-muted); }
+
+    /* ─── Scenario buttons ─── */
+    .scenario-btns { display:flex; gap:8px; }
+    .sc-btn {
+      padding:5px 14px; border-radius:20px;
+      border:1.5px solid var(--border); background:var(--surface);
+      cursor:pointer; font-size:12px; font-weight:500; color:var(--text-muted);
+      transition:all 0.18s; font-family:'Noto Sans JP',sans-serif;
+    }
+    .sc-btn.active-bull { border-color:var(--positive); background:var(--positive-light); color:var(--positive); }
+    .sc-btn.active-base { border-color:var(--primary);  background:var(--primary-light);  color:var(--primary); }
+    .sc-btn.active-bear { border-color:var(--warning);  background:var(--warning-light);  color:var(--warning); }
+
+    /* ─── Rebalance table ─── */
+    .rb-table { width:100%; border-collapse:collapse; font-size:14px; }
+    .rb-table th {
+      text-align:left; padding:10px 12px;
+      font-weight:600; color:var(--text-muted); font-size:11px;
+      border-bottom:2px solid var(--border);
+    }
+    .rb-table th.c { text-align:center; }
+    .rb-table td { padding:12px; border-bottom:1px solid var(--border); }
+    .rb-table td.c { text-align:center; }
+    .rb-table tr:last-child td { border-bottom:none; }
+
+    /* ─── Suggestion items ─── */
+    .suggestion {
+      display:flex; gap:14px;
+      padding:14px 0; border-bottom:1px solid var(--border);
+    }
+    .suggestion:last-child { border-bottom:none; }
+    .pri-badge {
+      flex-shrink:0; width:28px; height:28px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:11px; font-weight:700; margin-top:2px;
+    }
+    .pri-h { background:var(--negative-light); color:var(--negative); }
+    .pri-m { background:var(--warning-light);  color:var(--warning); }
+    .pri-l { background:var(--positive-light); color:var(--positive); }
+    .sug-text   { font-size:14px; line-height:1.65; color:var(--text); }
+    .sug-action { font-size:12px; color:var(--text-muted); margin-top:4px; }
+
+    /* ─── Sub-tabs ─── */
+    .tab-bar {
+      display:flex; background:var(--bg); border-radius:var(--radius-sm);
+      padding:4px; margin-bottom:20px; gap:4px;
+    }
+    .tab-btn {
+      flex:1; padding:8px 12px; border-radius:8px; border:none;
+      background:transparent; cursor:pointer; font-size:13px; font-weight:500;
+      color:var(--text-muted); transition:all 0.18s; font-family:'Noto Sans JP',sans-serif;
+    }
+    .tab-btn.active { background:var(--surface); color:var(--text); box-shadow:var(--shadow); }
+
+    /* ─── Mobile top bar ─── */
+    .top-bar {
+      display:none; position:fixed; top:0; left:0; right:0; height:56px;
+      background:var(--surface); border-bottom:1px solid var(--border);
+      z-index:100; align-items:center; padding:0 20px;
+      justify-content:space-between;
+    }
+    .top-bar-logo { display:flex; align-items:center; gap:8px; }
+
+    /* ─── Mobile bottom nav ─── */
+    .bottom-nav {
+      display:none; position:fixed; bottom:0; left:0; right:0;
+      background:var(--surface); border-top:1px solid var(--border);
+      z-index:100; padding:8px 0 calc(8px + env(safe-area-inset-bottom));
+    }
+    .bnav-inner { display:flex; justify-content:space-around; }
+    .bnav-item {
+      display:flex; flex-direction:column; align-items:center; gap:3px;
+      padding:4px 10px; cursor:pointer; color:var(--text-light);
+      font-size:10px; font-weight:500; transition:color 0.18s; user-select:none;
+    }
+    .bnav-item .nav-icon { font-size:20px; width:auto; }
+    .bnav-item.active { color:var(--primary); }
+
+    /* ─── Spacing helpers ─── */
+    .mt8  { margin-top:8px;  }
+    .mt12 { margin-top:12px; }
+    .mt16 { margin-top:16px; }
+    .mt20 { margin-top:20px; }
+    .mt24 { margin-top:24px; }
+    .mb16 { margin-bottom:16px; }
+    .mb20 { margin-bottom:20px; }
+    .mb24 { margin-bottom:24px; }
+
+    /* ─── Responsive ─── */
+    @media (max-width:768px) {
+      .sidebar { display:none; }
+      .top-bar { display:flex; }
+      .bottom-nav { display:block; }
+      .main-content { margin-left:0; padding:74px 16px 90px; }
+      .grid-3 { grid-template-columns:1fr; }
+      .grid-2 { grid-template-columns:1fr; }
+      .metric-grid { grid-template-columns:repeat(2,1fr); }
+      .hero-value { font-size:30px; }
+      .home-hero { flex-direction:column; gap:16px; padding:22px; }
+      .hero-right { text-align:left; display:flex; gap:24px; }
+    }
+    @media (min-width:769px) and (max-width:1100px) {
+      .grid-3 { grid-template-columns:repeat(2,1fr); }
+      .main-content { padding:28px 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Mobile Top Bar ── -->
+<header class="top-bar">
+  <div class="top-bar-logo">
+    <div class="logo-icon" style="width:30px;height:30px;font-size:13px;">M</div>
+    <span style="font-size:15px;font-weight:700;">My Assets</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-size:12px;color:var(--text-muted);">2026年4月</span>
+    <div class="user-avatar" style="width:30px;height:30px;font-size:12px;">山</div>
+  </div>
+</header>
+
+<!-- ── Sidebar ── -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">M</div>
+    <div>
+      <div class="logo-text">My Assets</div>
+      <div class="logo-sub">資産管理ダッシュボード</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="nav-item active"   onclick="go('home',this)">      <span class="nav-icon">🏠</span> ホーム</div>
+    <div class="nav-item"          onclick="go('alloc',this)">     <span class="nav-icon">📊</span> 資産配分</div>
+    <div class="nav-item"          onclick="go('risk',this)">      <span class="nav-icon">🛡️</span> リスク</div>
+    <div class="nav-item"          onclick="go('income',this)">    <span class="nav-icon">📈</span> 収益見通し</div>
+    <div class="nav-item"          onclick="go('rebalance',this)"> <span class="nav-icon">⚖️</span> リバランス提案</div>
+  </div>
+
+  <div class="sidebar-user">
+    <div class="user-avatar">山</div>
+    <div>
+      <div class="user-name">山田 家</div>
+      <div class="user-plan">プレミアムプラン</div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════
+     MAIN CONTENT
+═══════════════════════════════════════ -->
+<main class="main-content">
+
+<!-- ░░░ 1. HOME ░░░ -->
+<section class="screen active" id="s-home">
+  <div class="page-header">
+    <h1 class="page-title">おはようございます、山田さん 👋</h1>
+    <p class="page-subtitle">2026年4月21日（火）・ 最終更新: 本日 9:32</p>
+  </div>
+
+  <!-- Hero -->
+  <div class="home-hero mb24">
+    <div>
+      <div class="hero-label">純資産</div>
+      <div class="hero-value">9,650<span style="font-size:22px;font-weight:400;opacity:0.8;">万円</span></div>
+      <div class="hero-sub">総資産 1億2,450万円 ／ 負債 2,800万円</div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-mini">
+        <div class="hero-mini-label">今月の予想収益</div>
+        <div class="hero-mini-value">+ 18.4万円</div>
+      </div>
+      <div class="hero-mini">
+        <div class="hero-mini-label">リスク水準</div>
+        <div class="hero-mini-value">中リスク</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="grid-3 mb24">
+    <div class="stat-card">
+      <div class="stat-label">すぐ使えるお金</div>
+      <div class="stat-value">22%</div>
+      <div class="stat-change up">▲ 2,734万円相当</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">年間予想収益</div>
+      <div class="stat-value pos">235万円</div>
+      <div class="stat-change muted">配当・利息・家賃など</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">今月の変化</div>
+      <div class="stat-value pos">+ 42万円</div>
+      <div class="stat-change up">▲ 0.44%（先月比）</div>
+    </div>
+  </div>
+
+  <!-- Two column -->
+  <div class="grid-2 mb24">
+    <!-- Mini chart + legend -->
+    <div class="card">
+      <div class="card-title">資産配分サマリー</div>
+      <div class="alloc-flex">
+        <div class="alloc-chart-wrap">
+          <canvas id="homeChart" height="180"></canvas>
+        </div>
+        <div class="alloc-list">
+          <div class="asset-row">
+            <div class="asset-left"><div class="dot" style="background:#5B7FD4;"></div><span class="asset-name">株式</span></div>
+            <span style="font-weight:600;font-size:13px;">32%</span>
+          </div>
+          <div class="asset-row">
+            <div class="asset-left"><div class="dot" style="background:#68D391;"></div><span class="asset-name">投資信託/ETF</span></div>
+            <span style="font-weight:600;font-size:13px;">20%</span>
+          </div>
+          <div class="asset-row">
+            <div class="asset-left"><div class="dot" style="background:#A0AEC0;"></div><span class="asset-name">現金</span></div>
+            <span style="font-weight:600;font-size:13px;">18%</span>
+          </div>
+          <div class="asset-row">
+            <div class="asset-left"><div class="dot" style="background:#FC8181;"></div><span class="asset-name">不動産</span></div>
+            <span style="font-weight:600;font-size:13px;">10%</span>
+          </div>
+          <div class="asset-row">
+            <div class="asset-left"><div class="dot" style="background:#F6AD55;"></div><span class="asset-name">債券</span></div>
+            <span style="font-weight:600;font-size:13px;">10%</span>
+          </div>
+          <div class="asset-row">
+            <div class="asset-left"><div class="dot" style="background:#B794F4;"></div><span class="asset-name">暗号資産</span></div>
+            <span style="font-weight:600;font-size:13px;">8%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI + Recent changes -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="ai-card">
+        <div class="ai-header">
+          <span class="ai-label">AI分析</span>
+          <span class="ai-title">今月の気づき</span>
+        </div>
+        <p class="ai-text">全体的にバランスの良い資産構成です。株式比率が目標より4ポイント高めです。暗号資産の上昇により純資産は先月比＋42万円となりました。外貨資産が49%と高めのため、円高局面では注意が必要です。</p>
+      </div>
+      <div class="card">
+        <div class="card-title">最近の変化</div>
+        <div style="font-size:13px;line-height:1.7;">
+          <div class="asset-row"><span>📈 米国株ポートフォリオ</span><span style="color:var(--positive);font-weight:600;">+2.3%</span></div>
+          <div class="asset-row"><span>₿ 暗号資産（BTC/ETH）</span><span style="color:var(--positive);font-weight:600;">+5.1%</span></div>
+          <div class="asset-row"><span>🏠 収益不動産</span><span style="color:var(--text-muted);font-weight:600;">±0%</span></div>
+          <div class="asset-row" style="border-bottom:none;"><span>💴 円/ドル相場</span><span style="color:var(--negative);font-weight:600;">–1.2%（円高）</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notice">
+    <span style="font-size:16px;">💡</span>
+    <div>株式比率が目標配分(28%)を4ポイント上回っています。<strong>リバランス提案</strong>でシミュレーションを確認してみましょう。</div>
+  </div>
+</section>
+
+<!-- ░░░ 2. ALLOCATION ░░░ -->
+<section class="screen" id="s-alloc">
+  <div class="page-header">
+    <h1 class="page-title">資産配分</h1>
+    <p class="page-subtitle">総資産 1億2,450万円の内訳</p>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="allocTab('asset',this)">資産クラス別</button>
+    <button class="tab-btn"        onclick="allocTab('currency',this)">通貨別</button>
+    <button class="tab-btn"        onclick="allocTab('account',this)">口座別</button>
+  </div>
+
+  <!-- ── Asset Class ── -->
+  <div id="at-asset">
+    <div class="grid-2 mb20">
+      <div class="card">
+        <div class="card-title">資産クラス別配分</div>
+        <div style="max-width:260px;margin:0 auto;">
+          <canvas id="allocChart"></canvas>
+        </div>
+        <div class="legend mt16">
+          <div class="legend-item"><div class="legend-dot" style="background:#A0AEC0;"></div>現金</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#5B7FD4;"></div>株式</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#68D391;"></div>投資信託/ETF</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#F6AD55;"></div>債券</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#B794F4;"></div>暗号資産</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#FC8181;"></div>不動産</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#CBD5E0;"></div>その他</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">主要資産一覧</div>
+        <div class="asset-row">
+          <div class="asset-left"><div class="dot" style="background:#A0AEC0;"></div><div><div class="asset-name">現金・預金</div><div class="asset-sub">普通・定期預金</div></div></div>
+          <div class="asset-amount"><div>2,241万円</div><div class="asset-pct">18%</div></div>
+        </div>
+        <div class="asset-row">
+          <div class="asset-left"><div class="dot" style="background:#5B7FD4;"></div><div><div class="asset-name">株式</div><div class="asset-sub">国内・海外株式</div></div></div>
+          <div class="asset-amount"><div>3,984万円</div><div class="asset-pct">32%</div></div>
+        </div>
+        <div class="asset-row">
+          <div class="asset-left"><div class="dot" style="background:#68D391;"></div><div><div class="asset-name">投資信託 / ETF</div><div class="asset-sub">インデックスファンド中心</div></div></div>
+          <div class="asset-amount"><div>2,490万円</div><div class="asset-pct">20%</div></div>
+        </div>
+        <div class="asset-row">
+          <div class="asset-left"><div class="dot" style="background:#F6AD55;"></div><div><div class="asset-name">債券</div><div class="asset-sub">国債・社債</div></div></div>
+          <div class="asset-amount"><div>1,245万円</div><div class="asset-pct">10%</div></div>
+        </div>
+        <div class="asset-row">
+          <div class="asset-left"><div class="dot" style="background:#B794F4;"></div><div><div class="asset-name">暗号資産</div><div class="asset-sub">BTC, ETH</div></div></div>
+          <div class="asset-amount"><div>996万円</div><div class="asset-pct">8%</div></div>
+        </div>
+        <div class="asset-row">
+          <div class="asset-left"><div class="dot" style="background:#FC8181;"></div><div><div class="asset-name">不動産</div><div class="asset-sub">収益不動産（1棟）</div></div></div>
+          <div class="asset-amount"><div>1,245万円</div><div class="asset-pct">10%</div></div>
+        </div>
+        <div class="asset-row">
+          <div class="asset-left"><div class="dot" style="background:#CBD5E0;"></div><div><div class="asset-name">その他</div><div class="asset-sub">金・商品など</div></div></div>
+          <div class="asset-amount"><div>249万円</div><div class="asset-pct">2%</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="ai-card">
+      <div class="ai-header"><span class="ai-label">コメント</span><span class="ai-title">配分の評価</span></div>
+      <p class="ai-text">成長資産（株式＋投資信託）が52%と比較的高めですが、不動産・債券による安定収益源も確保されています。現金比率18%は緊急時に十分な水準です。暗号資産は全体の8%で、ハイリスクながら許容範囲内です。</p>
+    </div>
+  </div>
+
+  <!-- ── Currency ── -->
+  <div id="at-currency" style="display:none;">
+    <div class="card mb20">
+      <div class="card-title">通貨別配分</div>
+      <div style="max-width:280px;margin:0 auto 24px;">
+        <canvas id="currChart"></canvas>
+      </div>
+      <div class="pb-wrap"><div class="pb-label"><span>日本円（JPY）</span><span style="font-weight:600;">48%</span></div><div class="pb-track"><div class="pb-fill" style="width:48%;background:#5B7FD4;"></div></div></div>
+      <div class="pb-wrap"><div class="pb-label"><span>米ドル（USD）</span><span style="font-weight:600;">35%</span></div><div class="pb-track"><div class="pb-fill" style="width:35%;background:#68D391;"></div></div></div>
+      <div class="pb-wrap"><div class="pb-label"><span>暗号資産（BTC/ETH）</span><span style="font-weight:600;">8%</span></div><div class="pb-track"><div class="pb-fill" style="width:8%;background:#B794F4;"></div></div></div>
+      <div class="pb-wrap"><div class="pb-label"><span>ユーロ（EUR）</span><span style="font-weight:600;">6%</span></div><div class="pb-track"><div class="pb-fill" style="width:6%;background:#F6AD55;"></div></div></div>
+      <div class="pb-wrap" style="margin-bottom:0;"><div class="pb-label"><span>その他</span><span style="font-weight:600;">3%</span></div><div class="pb-track"><div class="pb-fill" style="width:3%;background:#CBD5E0;"></div></div></div>
+    </div>
+    <div class="notice notice-warn">
+      <span style="font-size:16px;">⚠️</span>
+      <div>外貨資産（USD＋EUR＋暗号資産）が資産全体の49%を占めています。円高局面では資産価値の目減りに注意が必要です。</div>
+    </div>
+  </div>
+
+  <!-- ── Account ── -->
+  <div id="at-account" style="display:none;">
+    <div class="card">
+      <div class="card-title">口座別配分</div>
+      <div class="asset-row">
+        <div class="asset-left"><div style="width:36px;height:36px;background:#EBF0FB;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">🏦</div><div><div class="asset-name">特定口座（証券A社）</div><div class="asset-sub">株式・投資信託</div></div></div>
+        <div class="asset-amount"><div>4,980万円</div><div class="asset-pct">40%</div></div>
+      </div>
+      <div class="asset-row">
+        <div class="asset-left"><div style="width:36px;height:36px;background:#F0FFF4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">📗</div><div><div class="asset-name">NISA口座</div><div class="asset-sub">積立NISA・成長投資枠</div></div></div>
+        <div class="asset-amount"><div>1,494万円</div><div class="asset-pct">12%</div></div>
+      </div>
+      <div class="asset-row">
+        <div class="asset-left"><div style="width:36px;height:36px;background:#FFFAF0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">💼</div><div><div class="asset-name">iDeCo</div><div class="asset-sub">確定拠出年金</div></div></div>
+        <div class="asset-amount"><div>622万円</div><div class="asset-pct">5%</div></div>
+      </div>
+      <div class="asset-row">
+        <div class="asset-left"><div style="width:36px;height:36px;background:#FFF5F5;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">₿</div><div><div class="asset-name">暗号資産取引所</div><div class="asset-sub">BTC, ETH</div></div></div>
+        <div class="asset-amount"><div>996万円</div><div class="asset-pct">8%</div></div>
+      </div>
+      <div class="asset-row">
+        <div class="asset-left"><div style="width:36px;height:36px;background:#EBF0FB;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">🏠</div><div><div class="asset-name">収益不動産</div><div class="asset-sub">東京都内 区分マンション</div></div></div>
+        <div class="asset-amount"><div>1,245万円</div><div class="asset-pct">10%</div></div>
+      </div>
+      <div class="asset-row">
+        <div class="asset-left"><div style="width:36px;height:36px;background:#F7F8FC;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">💴</div><div><div class="asset-name">普通・定期預金</div><div class="asset-sub">都市銀行2行</div></div></div>
+        <div class="asset-amount"><div>2,241万円</div><div class="asset-pct">18%</div></div>
+      </div>
+      <div class="asset-row">
+        <div class="asset-left"><div style="width:36px;height:36px;background:#F0FFF4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;">📋</div><div><div class="asset-name">その他（債券・金など）</div><div class="asset-sub">国債・ゴールドETF</div></div></div>
+        <div class="asset-amount"><div>872万円</div><div class="asset-pct">7%</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░░ 3. RISK ░░░ -->
+<section class="screen" id="s-risk">
+  <div class="page-header">
+    <h1 class="page-title">リスク分析</h1>
+    <p class="page-subtitle">資産全体のリスク水準と下落シナリオ</p>
+  </div>
+
+  <!-- Risk level card -->
+  <div class="card mb24">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+      <div>
+        <div class="card-title">総合リスク水準</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:8px;">
+          <span class="badge med" style="font-size:16px;padding:7px 20px;">中リスク</span>
+          <span style="font-size:13px;color:var(--text-muted);">5段階中 3</span>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">リスクスコア</div>
+        <div style="font-size:38px;font-weight:700;color:var(--warning);">52<span style="font-size:16px;font-weight:400;color:var(--text-muted);">/100</span></div>
+      </div>
+    </div>
+    <div class="mt16">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:6px;">
+        <span>低リスク</span><span>中リスク</span><span>高リスク</span>
+      </div>
+      <div class="gauge-bar">
+        <div class="gauge-pin" style="left:52%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 Scenarios -->
+  <div class="grid-3 mb24">
+    <div class="card">
+      <div class="card-title">通常時の想定下落</div>
+      <div style="font-size:28px;font-weight:700;color:var(--positive);margin:8px 0;">– 120万円</div>
+      <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">95%の確率でこの範囲内に収まると想定されます（VaR 95%）</p>
+    </div>
+    <div class="card">
+      <div class="card-title">厳しい相場での下落</div>
+      <div style="font-size:28px;font-weight:700;color:var(--warning);margin:8px 0;">– 260万円</div>
+      <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">リーマンショック級の相場急落時のシナリオです</p>
+    </div>
+    <div class="card">
+      <div class="card-title">過去最大ドローダウン</div>
+      <div style="font-size:28px;font-weight:700;color:var(--negative);margin:8px 0;">– 18.4%</div>
+      <p style="font-size:12px;color:var(--text-muted);line-height:1.6;">推計ポートフォリオの過去最大下落幅</p>
+    </div>
+  </div>
+
+  <!-- Risk factors + metrics -->
+  <div class="grid-2 mb24">
+    <div class="card">
+      <div class="card-title">リスク要因の評価</div>
+      <div class="asset-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+          <span style="font-size:14px;">資産の偏り（集中リスク）</span>
+          <span class="badge med">やや高</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.5;">株式・投信が資産全体の52%を占めています</p>
+      </div>
+      <div class="asset-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+          <span style="font-size:14px;">通貨リスク（為替）</span>
+          <span class="badge med">中程度</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.5;">外貨資産が49%。円高1%で約60万円の評価減</p>
+      </div>
+      <div class="asset-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+          <span style="font-size:14px;">暗号資産リスク</span>
+          <span class="badge high">高い</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.5;">BTC/ETHは50%以上の下落リスクがあります（8%保有）</p>
+      </div>
+      <div class="asset-row" style="flex-direction:column;align-items:flex-start;gap:6px;border-bottom:none;">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+          <span style="font-size:14px;">流動性リスク</span>
+          <span class="badge low">低い</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.5;">すぐ使える現金が22%あり、緊急時も対応可能です</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">詳細リスク指標（VaR / CVaR）</div>
+      <div class="detail-box mt12">
+        <div class="detail-row"><span class="detail-label">VaR（95%、1ヶ月）</span><span class="detail-value" style="color:var(--warning);">–120万円</span></div>
+        <div class="detail-row"><span class="detail-label">VaR（99%、1ヶ月）</span><span class="detail-value" style="color:var(--warning);">–196万円</span></div>
+        <div class="detail-row"><span class="detail-label">CVaR（期待損失額）</span><span class="detail-value" style="color:var(--negative);">–260万円</span></div>
+        <div class="detail-row"><span class="detail-label">年率ボラティリティ</span><span class="detail-value">12.4%</span></div>
+        <div class="detail-row"><span class="detail-label">シャープレシオ（推計）</span><span class="detail-value" style="color:var(--positive);">0.82</span></div>
+        <div class="detail-row"><span class="detail-label">最大ドローダウン（推計）</span><span class="detail-value" style="color:var(--negative);">–18.4%</span></div>
+      </div>
+      <div class="notice mt16" style="font-size:12px;">
+        <span>ℹ️</span>
+        <div>これらの数値は過去データおよびモデルに基づく推計値です。将来の損失を保証するものではありません。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Risk bar chart -->
+  <div class="card">
+    <div class="card-title">下落シナリオ別 影響額イメージ</div>
+    <div style="height:200px;margin-top:12px;">
+      <canvas id="riskChart"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ░░░ 4. INCOME ░░░ -->
+<section class="screen" id="s-income">
+  <div class="page-header">
+    <h1 class="page-title">収益見通し</h1>
+    <p class="page-subtitle">配当・利息・家賃などの収益予測</p>
+  </div>
+
+  <div class="grid-2 mb24">
+    <div class="stat-card" style="background:linear-gradient(135deg,#F0FFF4,#fff);">
+      <div class="stat-label">今月の予想収益</div>
+      <div class="stat-value pos xl">+ 18.4万円</div>
+      <div class="stat-change up mt8">前月比 +2.1万円（+12.9%）</div>
+    </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#EBF0FB,#fff);">
+      <div class="stat-label">年間の予想収益（標準シナリオ）</div>
+      <div class="stat-value pri xl">+ 235万円</div>
+      <div class="stat-change muted mt8">純資産比 約2.4%</div>
+    </div>
+  </div>
+
+  <div class="grid-2 mb24">
+    <div class="card">
+      <div class="card-title">収益源の内訳（月次）</div>
+      <div class="income-row">
+        <div class="income-left">
+          <div class="income-icon" style="background:#EBF0FB;">📈</div>
+          <div><div class="income-name">配当収入</div><div class="income-sub">国内・海外株式</div></div>
+        </div>
+        <div class="income-right"><div class="income-monthly">6.2万円/月</div><div class="income-annual">74.4万円/年</div></div>
+      </div>
+      <div class="income-row">
+        <div class="income-left">
+          <div class="income-icon" style="background:#F0FFF4;">🏠</div>
+          <div><div class="income-name">家賃収入</div><div class="income-sub">収益不動産</div></div>
+        </div>
+        <div class="income-right"><div class="income-monthly">8.0万円/月</div><div class="income-annual">96.0万円/年</div></div>
+      </div>
+      <div class="income-row">
+        <div class="income-left">
+          <div class="income-icon" style="background:#FFFAF0;">💰</div>
+          <div><div class="income-name">利息・利払</div><div class="income-sub">預金・債券</div></div>
+        </div>
+        <div class="income-right"><div class="income-monthly">2.3万円/月</div><div class="income-annual">27.6万円/年</div></div>
+      </div>
+      <div class="income-row">
+        <div class="income-left">
+          <div class="income-icon" style="background:#F5F0FF;">₿</div>
+          <div><div class="income-name">ステーキング報酬</div><div class="income-sub">ETH PoS</div></div>
+        </div>
+        <div class="income-right"><div class="income-monthly">1.9万円/月</div><div class="income-annual">22.8万円/年</div></div>
+      </div>
+      <div class="income-row" style="border-bottom:none;">
+        <div class="income-left">
+          <div class="income-icon" style="background:#F7F8FC;">📊</div>
+          <div><div class="income-name">想定運用益</div><div class="income-sub">投資信託・ETF</div></div>
+        </div>
+        <div class="income-right"><div class="income-monthly" style="color:var(--text-muted);">（見込み）</div><div class="income-annual">114.2万円/年</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">収益源の割合（年間）</div>
+      <div style="height:220px;">
+        <canvas id="incomeChart"></canvas>
+      </div>
+      <div class="legend mt12">
+        <div class="legend-item"><div class="legend-dot" style="background:#5B7FD4;"></div>配当</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#68D391;"></div>家賃</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#F6AD55;"></div>利息</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#B794F4;"></div>ステーキング</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#CBD5E0;"></div>運用益</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projection -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+      <div class="card-title" style="margin-bottom:0;">将来の資産推移シミュレーション</div>
+      <div class="scenario-btns">
+        <button class="sc-btn active-bull" onclick="scBtn(this,'bull')">強気</button>
+        <button class="sc-btn active-base" onclick="scBtn(this,'base')">標準</button>
+        <button class="sc-btn" onclick="scBtn(this,'bear')">保守的</button>
+      </div>
+    </div>
+    <div style="height:280px;">
+      <canvas id="projChart"></canvas>
+    </div>
+    <div class="metric-grid mt16">
+      <div class="metric-item">
+        <div class="metric-label">5年後（強気）</div>
+        <div class="metric-value" style="color:var(--positive);">1.61億円</div>
+      </div>
+      <div class="metric-item">
+        <div class="metric-label">5年後（標準）</div>
+        <div class="metric-value" style="color:var(--primary);">1.45億円</div>
+      </div>
+      <div class="metric-item">
+        <div class="metric-label">5年後（保守的）</div>
+        <div class="metric-value" style="color:var(--text-muted);">1.28億円</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ░░░ 5. REBALANCE ░░░ -->
+<section class="screen" id="s-rebalance">
+  <div class="page-header">
+    <h1 class="page-title">リバランス提案</h1>
+    <p class="page-subtitle">目標配分に近づけるための調整案</p>
+  </div>
+
+  <div class="ai-card mb24">
+    <div class="ai-header"><span class="ai-label">提案</span><span class="ai-title">今月のリバランス推奨アクション</span></div>
+    <p class="ai-text">株式の比率が目標を4ポイント上回っています。暗号資産も目標より3ポイント高めです。一方、現金比率が目標を下回っており、緊急時の備えをやや厚めにしておくことをおすすめします。<br>大幅な売買は不要で、次回の積立や定期的な入金タイミングに合わせて段階的に調整するのがおすすめです。</p>
+  </div>
+
+  <!-- Bar chart -->
+  <div class="card mb24">
+    <div class="card-title">現在配分 vs 目標配分</div>
+    <div style="height:300px;margin-top:12px;">
+      <canvas id="rbChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card mb24" style="overflow-x:auto;">
+    <div class="card-title">資産クラス別 詳細比較</div>
+    <table class="rb-table mt12">
+      <thead>
+        <tr>
+          <th>資産クラス</th>
+          <th class="c">現在</th>
+          <th class="c">目標</th>
+          <th class="c">差分</th>
+          <th class="c">おおよその金額</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#A0AEC0;"></div>現金</div></td>
+          <td class="c" style="font-weight:600;">18%</td><td class="c">22%</td>
+          <td class="c"><span class="badge low">–4%</span></td>
+          <td class="c" style="color:var(--positive);">+498万円 増やす</td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#5B7FD4;"></div>株式</div></td>
+          <td class="c" style="font-weight:600;">32%</td><td class="c">28%</td>
+          <td class="c"><span class="badge high">+4%</span></td>
+          <td class="c" style="color:var(--negative);">–498万円 減らす</td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#68D391;"></div>投資信託/ETF</div></td>
+          <td class="c" style="font-weight:600;">20%</td><td class="c">20%</td>
+          <td class="c"><span class="badge ok">±0%</span></td>
+          <td class="c" style="color:var(--text-muted);">変更なし</td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#F6AD55;"></div>債券</div></td>
+          <td class="c" style="font-weight:600;">10%</td><td class="c">12%</td>
+          <td class="c"><span class="badge low">–2%</span></td>
+          <td class="c" style="color:var(--positive);">+249万円 増やす</td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#B794F4;"></div>暗号資産</div></td>
+          <td class="c" style="font-weight:600;">8%</td><td class="c">5%</td>
+          <td class="c"><span class="badge high">+3%</span></td>
+          <td class="c" style="color:var(--negative);">–374万円 減らす</td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#FC8181;"></div>不動産</div></td>
+          <td class="c" style="font-weight:600;">10%</td><td class="c">10%</td>
+          <td class="c"><span class="badge ok">±0%</span></td>
+          <td class="c" style="color:var(--text-muted);">変更なし</td>
+        </tr>
+        <tr>
+          <td><div style="display:flex;align-items:center;gap:8px;"><div class="dot" style="background:#CBD5E0;"></div>その他</div></td>
+          <td class="c" style="font-weight:600;">2%</td><td class="c">3%</td>
+          <td class="c"><span class="badge low">–1%</span></td>
+          <td class="c" style="color:var(--positive);">+124万円 増やす</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Suggestions -->
+  <div class="card">
+    <div class="card-title">優先アクション</div>
+    <div class="suggestion">
+      <div class="pri-badge pri-h">優</div>
+      <div>
+        <div class="sug-text">株式の比率がやや高めです。国内株の利益確定を検討しましょう。</div>
+        <div class="sug-action">推奨：株式を約498万円分 → 現金または債券へ</div>
+      </div>
+    </div>
+    <div class="suggestion">
+      <div class="pri-badge pri-h">優</div>
+      <div>
+        <div class="sug-text">暗号資産の比率を少し下げると、全体の変動を抑えやすくなります。</div>
+        <div class="sug-action">推奨：BTC/ETHを374万円分 → 一部利確して現金へ</div>
+      </div>
+    </div>
+    <div class="suggestion">
+      <div class="pri-badge pri-m">中</div>
+      <div>
+        <div class="sug-text">現金比率が少なめです。緊急の備えとして積み上げておくと安心です。</div>
+        <div class="sug-action">推奨：次回のボーナスや入金は一時的に現金として保持</div>
+      </div>
+    </div>
+    <div class="suggestion">
+      <div class="pri-badge pri-l">低</div>
+      <div>
+        <div class="sug-text">外貨資産への偏りがあります。円高転換時に注意が必要です。</div>
+        <div class="sug-action">為替ヘッジ付きファンドへの一部移行も選択肢です</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ── Mobile Bottom Nav ── -->
+<nav class="bottom-nav">
+  <div class="bnav-inner">
+    <div class="bnav-item active"  onclick="go('home',this,true)">      <span class="nav-icon">🏠</span><span>ホーム</span></div>
+    <div class="bnav-item"         onclick="go('alloc',this,true)">     <span class="nav-icon">📊</span><span>配分</span></div>
+    <div class="bnav-item"         onclick="go('risk',this,true)">      <span class="nav-icon">🛡️</span><span>リスク</span></div>
+    <div class="bnav-item"         onclick="go('income',this,true)">    <span class="nav-icon">📈</span><span>収益</span></div>
+    <div class="bnav-item"         onclick="go('rebalance',this,true)"> <span class="nav-icon">⚖️</span><span>提案</span></div>
+  </div>
+</nav>
+
+<script>
+// ── Navigation ──
+const SCREENS = ['home','alloc','risk','income','rebalance'];
+
+function go(name, el, mobile=false) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('s-' + name).classList.add('active');
+  const idx = SCREENS.indexOf(name);
+
+  if (mobile) {
+    document.querySelectorAll('.bnav-item').forEach((n,i) => n.classList.toggle('active', i===idx));
+    document.querySelectorAll('.sidebar .nav-item').forEach((n,i) => n.classList.toggle('active', i===idx));
+  } else {
+    document.querySelectorAll('.sidebar .nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('.bnav-item').forEach((n,i) => n.classList.toggle('active', i===idx));
+  }
+  window.scrollTo(0,0);
+}
+
+// ── Sub-tabs (allocation) ──
+function allocTab(tab, el) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  ['asset','currency','account'].forEach(t => {
+    document.getElementById('at-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+}
+
+// ── Scenario buttons ──
+function scBtn(el, type) {
+  document.querySelectorAll('.sc-btn').forEach(b => b.className = 'sc-btn');
+  el.className = 'sc-btn active-' + type;
+}
+
+// ── Charts ──
+Chart.defaults.font.family = "'Noto Sans JP', sans-serif";
+const C = ['#A0AEC0','#5B7FD4','#68D391','#F6AD55','#B794F4','#FC8181','#CBD5E0'];
+
+const DONUT_OPTS = {
+  cutout:'68%',
+  plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } } },
+  animation:{ duration:700 }
+};
+
+// Home donut
+new Chart('homeChart',{
+  type:'doughnut',
+  data:{ labels:['現金','株式','投資信託/ETF','債券','暗号資産','不動産','その他'], datasets:[{ data:[18,32,20,10,8,10,2], backgroundColor:C, borderWidth:2, borderColor:'#fff' }] },
+  options:{ ...DONUT_OPTS }
+});
+
+// Alloc donut
+new Chart('allocChart',{
+  type:'doughnut',
+  data:{ labels:['現金','株式','投資信託/ETF','債券','暗号資産','不動産','その他'], datasets:[{ data:[18,32,20,10,8,10,2], backgroundColor:C, borderWidth:2, borderColor:'#fff' }] },
+  options:{ cutout:'62%', plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } } }, animation:{ duration:700 } }
+});
+
+// Currency donut
+new Chart('currChart',{
+  type:'doughnut',
+  data:{ labels:['JPY','USD','BTC/ETH','EUR','その他'], datasets:[{ data:[48,35,8,6,3], backgroundColor:['#5B7FD4','#68D391','#B794F4','#F6AD55','#CBD5E0'], borderWidth:2, borderColor:'#fff' }] },
+  options:{ cutout:'60%', plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } } }, animation:{ duration:700 } }
+});
+
+// Risk horizontal bar
+new Chart('riskChart',{
+  type:'bar',
+  data:{
+    labels:['通常時（VaR 95%）','厳しい相場（CVaR）','最大ドローダウン相当'],
+    datasets:[{
+      data:[-120,-260,-1774],
+      backgroundColor:['rgba(72,187,120,0.72)','rgba(237,137,54,0.72)','rgba(252,129,129,0.72)'],
+      borderColor:['#48BB78','#ED8936','#FC8181'],
+      borderWidth:1.5, borderRadius:6,
+    }]
+  },
+  options:{
+    indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` 約 ${Math.abs(ctx.parsed.x).toLocaleString()}万円の下落` } } },
+    scales:{
+      x:{ ticks:{ callback: v => v===0?'0':`–${Math.abs(v)}万円` }, grid:{ color:'#F5F5F5' } },
+      y:{ grid:{ display:false } }
+    }
+  }
+});
+
+// Income donut
+new Chart('incomeChart',{
+  type:'doughnut',
+  data:{ labels:['配当','家賃','利息','ステーキング','運用益'], datasets:[{ data:[74,96,28,23,114], backgroundColor:['#5B7FD4','#68D391','#F6AD55','#B794F4','#CBD5E0'], borderWidth:2, borderColor:'#fff' }] },
+  options:{ cutout:'60%', plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` ${ctx.label}: ${ctx.parsed}万円/年` } } }, animation:{ duration:700 }, responsive:true, maintainAspectRatio:false }
+});
+
+// Projection line chart
+new Chart('projChart',{
+  type:'line',
+  data:{
+    labels:['2026','2027','2028','2029','2030','2031'],
+    datasets:[
+      { label:'強気', data:[9650,10480,11380,12350,13410,16100], borderColor:'#48BB78', backgroundColor:'rgba(72,187,120,0.07)', fill:true, tension:0.4, borderWidth:2, pointRadius:4 },
+      { label:'標準', data:[9650,10200,10780,11390,12040,14500], borderColor:'#5B7FD4', backgroundColor:'rgba(91,127,212,0.07)', fill:true, tension:0.4, borderWidth:2.5, pointRadius:4 },
+      { label:'保守的', data:[9650,9980,10320,10670,11030,12800], borderColor:'#A0AEC0', backgroundColor:'rgba(160,174,192,0.05)', fill:true, tension:0.4, borderWidth:1.5, borderDash:[5,3], pointRadius:4 },
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    interaction:{ mode:'index', intersect:false },
+    plugins:{ legend:{ position:'top', labels:{ font:{size:12}, boxWidth:12, padding:16 } }, tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}万円` } } },
+    scales:{
+      y:{ ticks:{ callback: v => v>=10000?`${(v/10000).toFixed(1)}億円`:`${v}万円` }, grid:{ color:'#F5F5F5' } },
+      x:{ grid:{ display:false } }
+    }
+  }
+});
+
+// Rebalance grouped bar
+new Chart('rbChart',{
+  type:'bar',
+  data:{
+    labels:['現金','株式','投信/ETF','債券','暗号資産','不動産','その他'],
+    datasets:[
+      { label:'現在', data:[18,32,20,10,8,10,2], backgroundColor:'rgba(91,127,212,0.75)', borderColor:'#5B7FD4', borderWidth:1, borderRadius:4 },
+      { label:'目標', data:[22,28,20,12,5,10,3], backgroundColor:'rgba(72,187,120,0.55)', borderColor:'#48BB78', borderWidth:1, borderRadius:4 },
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ position:'top', labels:{ font:{size:12}, boxWidth:12, padding:16 } }, tooltip:{ callbacks:{ label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}%` } } },
+    scales:{
+      y:{ max:40, ticks:{ callback: v => v+'%' }, grid:{ color:'#F5F5F5' } },
+      x:{ grid:{ display:false } }
+    }
+  }
+});
+</script>
+</body>
+</html>
